@@ -1,11 +1,18 @@
 {
   "name": "Layered Character Worldbook System",
-  "description": "分层人物世界书系统 - 智能生成、管理和成长人物，优化token使用",
+  "display_name": "分层人物世界书系统",
+  "description": "智能生成、管理和成长人物，优化token使用",
   "version": "2.0.0",
   "author": "Your Name",
   "homepage": "https://github.com/Epiphany2112/Test",
   "license": "MIT",
   "scripts": [
     "index.js"
+  ],
+  "tags": [
+    "character",
+    "worldbook",
+    "rpg",
+    "management"
   ]
 }
