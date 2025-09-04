@@ -4,137 +4,239 @@
     position: fixed;
     top: 60px;
     right: 20px;
-    width: 300px;
+    width: 320px;
     background-color: var(--black30a);
     border: 1px solid var(--white30a);
-    border-radius: 10px;
-    padding: 15px;
+    border-radius: 12px;
+    padding: 18px;
     color: var(--White);
     font-family: var(--mainFontFamily);
     z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    max-height: calc(100vh - 80px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    max-height: calc(100vh - 100px);
     overflow-y: auto;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.lcs-panel:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
 .lcs-panel h3 {
     margin-top: 0;
-    margin-bottom: 15px;
+    margin-bottom: 18px;
     color: var(--White);
-    font-size: 16px;
+    font-size: 18px;
     text-align: center;
-    border-bottom: 1px solid var(--white30a);
-    padding-bottom: 10px;
+    border-bottom: 2px solid var(--white30a);
+    padding-bottom: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
 }
 
 .lcs-stats {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 15px;
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
 .lcs-stat {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 5px 10px;
-    background-color: var(--black20a);
-    border-radius: 5px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, var(--black20a), var(--black30a));
+    border-radius: 8px;
+    border: 1px solid var(--white20a);
+    transition: all 0.2s ease;
+}
+
+.lcs-stat:hover {
+    background: linear-gradient(135deg, var(--black30a), var(--black40a));
+    border-color: var(--white30a);
+    transform: translateY(-1px);
 }
 
 .lcs-stat-label {
     font-size: 14px;
-    color: var(--grey50);
+    color: var(--grey70);
+    font-weight: 500;
 }
 
 .lcs-stat-value {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
     color: var(--White);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
 .lcs-controls {
     display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
 .lcs-button {
     flex: 1;
-    padding: 8px 12px;
-    background-color: var(--black30a);
+    padding: 12px 16px;
+    background: linear-gradient(135deg, var(--black30a), var(--black40a));
     border: 1px solid var(--white30a);
-    border-radius: 5px;
+    border-radius: 8px;
     color: var(--White);
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 12px;
+    transition: all 0.3s ease;
+    font-size: 13px;
     text-align: center;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    position: relative;
+    overflow: hidden;
+}
+
+.lcs-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.lcs-button:hover::before {
+    left: 100%;
 }
 
 .lcs-button:hover {
-    background-color: var(--black50a);
+    background: linear-gradient(135deg, var(--black40a), var(--black50a));
     border-color: var(--white50a);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.lcs-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .lcs-character-list {
-    max-height: 300px;
+    max-height: 400px;
     overflow-y: auto;
-    border-top: 1px solid var(--white30a);
-    padding-top: 10px;
+    border-top: 2px solid var(--white30a);
+    padding-top: 15px;
+}
+
+.lcs-character-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lcs-character-list::-webkit-scrollbar-track {
+    background: var(--black20a);
+    border-radius: 3px;
+}
+
+.lcs-character-list::-webkit-scrollbar-thumb {
+    background: var(--white30a);
+    border-radius: 3px;
+}
+
+.lcs-character-list::-webkit-scrollbar-thumb:hover {
+    background: var(--white50a);
 }
 
 .lcs-character-item {
-    padding: 10px;
-    margin-bottom: 8px;
-    background-color: var(--black20a);
-    border-radius: 5px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--black20a), var(--black30a));
+    border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    border: 1px solid var(--white20a);
+    position: relative;
+    overflow: hidden;
+}
+
+.lcs-character-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.lcs-character-item:hover::before {
+    opacity: 1;
 }
 
 .lcs-character-item:hover {
-    background-color: var(--black30a);
+    background: linear-gradient(135deg, var(--black30a), var(--black40a));
+    border-color: var(--white40a);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
 .lcs-character-name {
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     color: var(--White);
+    font-size: 16px;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 }
 
 .lcs-character-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 12px;
+    font-size: 13px;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .lcs-character-occupation {
-    color: var(--grey70);
+    color: var(--grey80);
+    background: var(--black20a);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--white20a);
 }
 
 .lcs-character-importance {
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
     font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid;
+    transition: all 0.2s ease;
 }
 
 .lcs-character-importance.main {
-    background-color: rgba(255, 215, 0, 0.3);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1));
     color: #ffd700;
+    border-color: rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
 }
 
 .lcs-character-importance.secondary {
-    background-color: rgba(192, 192, 192, 0.3);
+    background: linear-gradient(135deg, rgba(192, 192, 192, 0.3), rgba(192, 192, 192, 0.1));
     color: #c0c0c0;
+    border-color: rgba(192, 192, 192, 0.5);
+    box-shadow: 0 0 12px rgba(192, 192, 192, 0.3);
 }
 
 .lcs-character-importance.background {
-    background-color: rgba(173, 216, 230, 0.3);
+    background: linear-gradient(135deg, rgba(173, 216, 230, 0.3), rgba(173, 216, 230, 0.1));
     color: #add8e6;
+    border-color: rgba(173, 216, 230, 0.5);
+    box-shadow: 0 0 12px rgba(173, 216, 230, 0.3);
 }
 
 .lcs-character-details {
@@ -142,62 +244,96 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 500px;
+    width: 600px;
     max-width: 90vw;
-    max-height: 80vh;
-    background-color: var(--black30a);
-    border: 1px solid var(--white30a);
-    border-radius: 10px;
-    padding: 20px;
+    max-height: 85vh;
+    background: linear-gradient(135deg, var(--black40a), var(--black50a));
+    border: 2px solid var(--white30a);
+    border-radius: 16px;
+    padding: 25px;
     color: var(--White);
     font-family: var(--mainFontFamily);
     z-index: 2000;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
     overflow-y: auto;
+    backdrop-filter: blur(15px);
 }
 
 .lcs-character-details h3 {
     margin-top: 0;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     color: var(--White);
     text-align: center;
+    font-size: 24px;
+    font-weight: 600;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
 .lcs-detail-section {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--black20a);
+    border-radius: 10px;
+    border: 1px solid var(--white20a);
 }
 
 .lcs-detail-section h4 {
-    margin-bottom: 8px;
-    color: var(--grey70);
-    font-size: 14px;
+    margin-bottom: 12px;
+    color: var(--grey80);
+    font-size: 16px;
     border-bottom: 1px solid var(--white20a);
-    padding-bottom: 5px;
+    padding-bottom: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .lcs-detail-section p {
-    margin: 5px 0;
+    margin: 8px 0;
     font-size: 14px;
-    line-height: 1.4;
+    line-height: 1.6;
+    color: var(--grey90);
 }
 
 .lcs-close-details {
     display: block;
     width: 100%;
-    padding: 10px;
-    margin-top: 15px;
-    background-color: var(--black30a);
-    border: 1px solid var(--white30a);
-    border-radius: 5px;
+    padding: 15px;
+    margin-top: 25px;
+    background: linear-gradient(135deg, var(--black30a), var(--black40a));
+    border: 2px solid var(--white30a);
+    border-radius: 10px;
     color: var(--White);
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 14px;
-    text-align: center;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.lcs-close-details::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.lcs-close-details:hover::before {
+    left: 100%;
 }
 
 .lcs-close-details:hover {
-    background-color: var(--black50a);
+    background: linear-gradient(135deg, var(--black40a), var(--black50a));
+    border-color: var(--white50a);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 }
 
 .lcs-settings-dialog {
@@ -205,116 +341,258 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 400px;
+    width: 500px;
     max-width: 90vw;
-    background-color: var(--black30a);
-    border: 1px solid var(--white30a);
-    border-radius: 10px;
-    padding: 20px;
+    background: linear-gradient(135deg, var(--black40a), var(--black50a));
+    border: 2px solid var(--white30a);
+    border-radius: 16px;
+    padding: 25px;
     color: var(--White);
     font-family: var(--mainFontFamily);
     z-index: 2000;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(15px);
 }
 
 .lcs-settings-dialog h3 {
     margin-top: 0;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
     color: var(--White);
     text-align: center;
+    font-size: 22px;
+    font-weight: 600;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
 .lcs-setting {
-    margin-bottom: 15px;
+    margin-bottom: 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 12px;
+    background: var(--black20a);
+    border-radius: 8px;
+    border: 1px solid var(--white20a);
+    transition: all 0.2s ease;
+}
+
+.lcs-setting:hover {
+    background: var(--black30a);
+    border-color: var(--white30a);
 }
 
 .lcs-setting label {
     flex: 1;
     font-size: 14px;
-    color: var(--grey70);
+    color: var(--grey80);
+    font-weight: 500;
+    cursor: pointer;
 }
 
 .lcs-setting input[type="checkbox"] {
     width: 20px;
     height: 20px;
     cursor: pointer;
+    accent-color: var(--white50a);
 }
 
 .lcs-setting input[type="number"] {
-    width: 80px;
-    padding: 5px;
-    background-color: var(--black20a);
+    width: 100px;
+    padding: 8px 12px;
+    background: var(--black30a);
     border: 1px solid var(--white30a);
-    border-radius: 3px;
+    border-radius: 6px;
     color: var(--White);
     font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.lcs-setting input[type="number"]:focus {
+    outline: none;
+    border-color: var(--white50a);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
 .lcs-dialog-buttons {
     display: flex;
-    gap: 10px;
-    margin-top: 20px;
+    gap: 15px;
+    margin-top: 25px;
 }
 
 .lcs-notification {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    max-width: 300px;
-    padding: 15px;
-    background-color: var(--black30a);
-    border: 1px solid var(--white30a);
-    border-radius: 5px;
+    bottom: 30px;
+    right: 30px;
+    max-width: 400px;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--black40a), var(--black50a));
+    border: 2px solid var(--white30a);
+    border-radius: 12px;
     color: var(--White);
     font-family: var(--mainFontFamily);
     z-index: 3000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5);
     font-size: 14px;
-    line-height: 1.4;
+    line-height: 1.6;
     white-space: pre-line;
+    backdrop-filter: blur(10px);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 .lcs-notification-success {
     border-color: #4caf50;
-    background-color: rgba(76, 175, 80, 0.2);
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+    box-shadow: 0 15px 45px rgba(76, 175, 80, 0.4);
 }
 
 .lcs-notification-warning {
     border-color: #ff9800;
-    background-color: rgba(255, 152, 0, 0.2);
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.1));
+    box-shadow: 0 15px 45px rgba(255, 152, 0, 0.4);
 }
 
 .lcs-notification-error {
     border-color: #f44336;
-    background-color: rgba(244, 67, 54, 0.2);
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.2), rgba(244, 67, 54, 0.1));
+    box-shadow: 0 15px 45px rgba(244, 67, 54, 0.4);
 }
 
 .lcs-notification-growth {
     border-color: #2196f3;
-    background-color: rgba(33, 150, 243, 0.2);
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1));
+    box-shadow: 0 15px 45px rgba(33, 150, 243, 0.4);
 }
 
 .lcs-notification-milestone {
     border-color: #9c27b0;
-    background-color: rgba(156, 39, 176, 0.2);
+    background: linear-gradient(135deg, rgba(156, 39, 176, 0.2), rgba(156, 39, 176, 0.1));
+    box-shadow: 0 15px 45px rgba(156, 39, 176, 0.4);
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
     .lcs-panel {
-        width: 250px;
+        width: 280px;
         right: 10px;
         top: 50px;
+        padding: 15px;
+    }
+    
+    .lcs-panel h3 {
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    
+    .lcs-controls {
+        flex-direction: column;
+        gap: 8px;
     }
     
     .lcs-character-details {
-        width: 90vw;
+        width: 95vw;
+        padding: 20px;
     }
     
     .lcs-settings-dialog {
-        width: 90vw;
+        width: 95vw;
+        padding: 20px;
+    }
+    
+    .lcs-notification {
+        right: 15px;
+        bottom: 15px;
+        max-width: calc(100vw - 30px);
+        padding: 15px;
+        font-size: 13px;
+    }
+}
+
+/* 滚动条美化 */
+.lcs-character-details::-webkit-scrollbar,
+.lcs-settings-dialog::-webkit-scrollbar {
+    width: 8px;
+}
+
+.lcs-character-details::-webkit-scrollbar-track,
+.lcs-settings-dialog::-webkit-scrollbar-track {
+    background: var(--black20a);
+    border-radius: 4px;
+}
+
+.lcs-character-details::-webkit-scrollbar-thumb,
+.lcs-settings-dialog::-webkit-scrollbar-thumb {
+    background: var(--white30a);
+    border-radius: 4px;
+}
+
+.lcs-character-details::-webkit-scrollbar-thumb:hover,
+.lcs-settings-dialog::-webkit-scrollbar-thumb:hover {
+    background: var(--white50a);
+}
+
+/* 动画效果 */
+.lcs-character-item {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 特殊效果 */
+.lcs-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--white50a), transparent);
+    animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+    .lcs-panel {
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.9));
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .lcs-character-item {
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7));
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    
+    .lcs-character-item:hover {
+        background: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.8));
+        border-color: rgba(255, 255, 255, 0.25);
     }
 }
