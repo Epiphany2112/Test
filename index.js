@@ -1,8 +1,129 @@
-console.log('🔌 分层人物世界书系统插件文件已加载');
+import { SlashCommand } from '../../../slash-commands/SlashCommand.js';
+import { ARGUMENT_TYPE, SlashCommandArgument } from '../../../slash-commands/SlashCommandArgument.js';
+import { commonEnumProviders } from '../../../slash-commands/SlashCommandCommonEnumsProvider.js';
+import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.js';
+import { isTrueBoolean } from '../../../utils.js';
+export default 'LayeredCharacterWorldbookSystem'; // Init ES module
+
+const context = SillyTavern.getContext();
+const settingsKey = 'layeredCharacterWorldbookSystem';
+
+/**
+ * @type {LayeredCharacterWorldbookSystemSettings}
+ * @typedef {Object} LayeredCharacterWorldbookSystemSettings
+ * @property {boolean} enabled - Whether the extension is enabled.
+ * @property {boolean} autoGenerate - Whether to automatically generate characters.
+ * @property {number} maxMainCharacters - Maximum number of main characters.
+ * @property {number} maxSecondaryCharacters - Maximum number of secondary characters.
+ * @property {number} maxBackgroundCharacters - Maximum number of background characters.
+ * @property {number} tokenBudget - Token budget for the system.
+ * @property {boolean} enableGrowthSystem - Whether to enable the character growth system.
+ * @property {boolean} autoUpgrade - Whether to automatically upgrade character importance.
+ * @property {number} triggerCooldown - Trigger cooldown in milliseconds.
+ * @property {number} cleanupInterval - Cleanup interval in milliseconds.
+ */
+const defaultSettings = Object.freeze({
+    enabled: true,
+    autoGenerate: true,
+    maxMainCharacters: 5,
+    maxSecondaryCharacters: 15,
+    maxBackgroundCharacters: 30,
+    tokenBudget: 2000,
+    enableGrowthSystem: true,
+    autoUpgrade: true,
+    triggerCooldown: 5 * 60 * 1000, // 5分钟冷却
+    cleanupInterval: 30 * 60 * 1000, // 30分钟清理
+});
+
+// 全局变量
+const characters = new Map();
+const characterIndex = [];
+const activeEntries = new Set();
+const interactionHistory = new Map();
+let lastTriggerTime = 0;
+
+// 人物重要性定义
+const importanceLevels = {
+    main: {
+        name: '主要人物',
+        tokenBudget: 800,
+        detailLevel: 'high',
+        priority: 3,
+        upgradeThreshold: 25
+    },
+    secondary: {
+        name: '次要人物',
+        tokenBudget: 300,
+        detailLevel: 'medium',
+        priority: 2,
+        upgradeThreshold: 10
+    },
+    background: {
+        name: '背景人物',
+        tokenBudget: 100,
+        detailLevel: 'low',
+        priority: 1,
+        upgradeThreshold: 0
+    }
+};
+
+// 人物生成模板
+const characterTemplates = {
+    names: {
+        male: ["李明", "张强", "王磊", "刘伟", "陈杰", "杨帆", "赵勇", "黄涛", "周林", "吴超"],
+        female: ["王芳", "李娜", "张丽", "刘敏", "陈静", "杨雪", "赵莉", "黄梅", "周燕", "吴红"],
+        surname: ["欧阳", "司马", "上官", "独孤", "南宫", "东方", "西门", "北冥", "南华", "东篱"]
+    },
+    personalities: {
+        main: [
+            "开朗活泼、正直勇敢、重情重义", "内向害羞、聪明睿智、观察敏锐",
+            "冷酷无情、行事果断、目标明确", "温柔善良、富有同情心、乐于助人",
+            "狡猾机智、善于交际、追求利益", "严肃认真、责任心强、一丝不苟"
+        ],
+        secondary: [
+            "开朗活泼", "内向害羞", "冷酷无情", "温柔善良", "狡猾机智",
+            "正直勇敢", "懦弱胆小", "幽默风趣", "严肃认真", "随和友善"
+        ],
+        background: [
+            "普通", "友善", "忙碌", "沉默", "热情", "警惕", "好奇", "疲惫"
+        ]
+    },
+    occupations: {
+        main: ["铁匠", "药师", "商会会长", "守卫队长", "魔法师"],
+        secondary: ["商人", "士兵", "学者", "医生", "盗贼", "工匠", "艺术家"],
+        background: ["村民", "市民", "路人", "学徒", "伙计", "仆人"]
+    },
+    backgrounds: {
+        main: [
+            "出身名门望族，家族显赫",
+            "孤儿院长大，自学成才",
+            "世家传承，技艺精湛",
+            "游历四方，见多识广",
+            "隐居山林，神秘莫测"
+        ],
+        secondary: [
+            "出身普通家庭，努力奋斗",
+            "从小拜师学艺，技艺纯熟",
+            "经商致富，家道殷实",
+            "从军归来，经验丰富",
+            "求学多年，知识渊博"
+        ],
+        background: [
+            "本地居民", "外来移民", "打工谋生", "退休养老", "临时停留"
+        ]
+    }
+};
+
+// 触发关键词
+const triggerKeywords = {
+    generate: ['遇到', '看见', '发现', '认识', '碰到', '陌生人', '路人', '居民', '村民', '市民'],
+    index: ['人物索引', '角色列表', '所有人物', '人物总览', '有哪些人', '人物统计'],
+    location: ['酒馆', '市场', '铁匠铺', '药店', '城门', '旅店', '商店', '街道']
+};
+
 // 世界书管理器
 class WorldBookManager {
-    constructor(plugin) {
-        this.plugin = plugin;
+    constructor() {
         this.indexEntryId = 'CHARACTER_INDEX';
     }
 
@@ -15,34 +136,31 @@ class WorldBookManager {
 
     async createIndexEntry() {
         console.log('创建人物索引条目');
-        // 实际实现中会调用SillyTavern的API创建世界书条目
     }
 
     async updateIndexEntry(content) {
         console.log('更新人物索引条目');
-        // 实际实现中会调用SillyTavern的API更新世界书条目
     }
 
     async createCharacterEntry(character) {
         console.log(`创建人物条目: ${character.name}`);
-        // 实际实现中会调用SillyTavern的API创建世界书条目
     }
 }
 
 // 智能触发系统
 class SmartTriggerSystem {
-    constructor(plugin) {
-        this.plugin = plugin;
+    constructor() {
         this.lastTriggerTime = 0;
     }
 
     checkTrigger(message) {
         const now = Date.now();
-        if (now - this.lastTriggerTime < this.plugin.settings.triggerCooldown) {
+        const settings = context.extensionSettings[settingsKey];
+        if (now - this.lastTriggerTime < settings.triggerCooldown) {
             return false;
         }
 
-        const shouldTrigger = this.plugin.shouldGenerateCharacter(message);
+        const shouldTrigger = this.shouldGenerateCharacter(message);
         if (shouldTrigger) {
             this.lastTriggerTime = now;
             return true;
@@ -50,19 +168,21 @@ class SmartTriggerSystem {
 
         return false;
     }
+
+    shouldGenerateCharacter(message) {
+        return triggerKeywords.generate.some(keyword => 
+            message.toLowerCase().includes(keyword.toLowerCase())
+        );
+    }
 }
 
 // 人物重要性管理器
 class CharacterImportanceManager {
-    constructor(plugin) {
-        this.plugin = plugin;
-    }
-
     checkImportanceUpgrade(characterId) {
-        const character = this.plugin.characters.get(characterId);
+        const character = characters.get(characterId);
         if (!character) return;
 
-        const thresholds = this.plugin.importanceLevels;
+        const thresholds = importanceLevels;
         const currentLevel = character.importance;
         const interactionCount = character.interactionCount;
 
@@ -77,13 +197,13 @@ class CharacterImportanceManager {
             shouldUpgrade = true;
         }
 
-        if (shouldUpgrade) {
+        if (shouldUpgrade && context.extensionSettings[settingsKey].autoUpgrade) {
             this.upgradeCharacterImportance(characterId, newLevel);
         }
     }
 
     upgradeCharacterImportance(characterId, newLevel) {
-        const character = this.plugin.characters.get(characterId);
+        const character = characters.get(characterId);
         if (!character) return;
 
         console.log(`升级人物重要性: ${character.name} 从 ${character.importance} 到 ${newLevel}`);
@@ -92,217 +212,15 @@ class CharacterImportanceManager {
         character.lastUpdated = new Date().toISOString();
         
         // 更新人物详细信息
-        this.plugin.generateDetailInfo(newLevel, character.basicInfo).then(detailInfo => {
+        generateDetailInfo(newLevel, character.basicInfo).then(detailInfo => {
             character.detailInfo = detailInfo;
-            this.plugin.worldBookManager.createCharacterEntry(character);
+            worldBookManager.createCharacterEntry(character);
         });
 
-        this.plugin.showNotification(
-            `${character.name} 已升级为${this.plugin.importanceLevels[newLevel].name}！`,
+        showNotification(
+            `${character.name} 已升级为${importanceLevels[newLevel].name}！`,
             'success'
         );
-    }
-}
-
-// 用户界面管理器
-class UIManager {
-    constructor(plugin) {
-        this.plugin = plugin;
-    }
-
-    createUI() {
-        // 创建控制面板
-        const panel = $(`
-            <div id="lcs-control-panel" class="lcs-panel">
-                <h3>分层人物世界书系统</h3>
-                <div class="lcs-stats">
-                    <div class="lcs-stat">
-                        <span class="lcs-stat-label">总人物数:</span>
-                        <span class="lcs-stat-value" id="lcs-total-characters">0</span>
-                    </div>
-                    <div class="lcs-stat">
-                        <span class="lcs-stat-label">主要人物:</span>
-                        <span class="lcs-stat-value" id="lcs-main-characters">0</span>
-                    </div>
-                    <div class="lcs-stat">
-                        <span class="lcs-stat-label">次要人物:</span>
-                        <span class="lcs-stat-value" id="lcs-secondary-characters">0</span>
-                    </div>
-                    <div class="lcs-stat">
-                        <span class="lcs-stat-label">背景人物:</span>
-                        <span class="lcs-stat-value" id="lcs-background-characters">0</span>
-                    </div>
-                </div>
-                <div class="lcs-controls">
-                    <button id="lcs-toggle-enabled" class="lcs-button">启用系统</button>
-                    <button id="lcs-show-index" class="lcs-button">显示索引</button>
-                    <button id="lcs-settings" class="lcs-button">设置</button>
-                </div>
-                <div class="lcs-character-list" id="lcs-character-list"></div>
-            </div>
-        `);
-
-        $('body').append(panel);
-        this.setupEventListeners();
-        this.updateStats();
-    }
-
-    setupEventListeners() {
-        $('#lcs-toggle-enabled').on('click', () => {
-            this.plugin.settings.enabled = !this.plugin.settings.enabled;
-            this.plugin.saveSettings();
-            $('#lcs-toggle-enabled').text(this.plugin.settings.enabled ? '禁用系统' : '启用系统');
-            this.plugin.showNotification(
-                `系统已${this.plugin.settings.enabled ? '启用' : '禁用'}`,
-                'info'
-            );
-        });
-
-        $('#lcs-show-index').on('click', () => {
-            this.plugin.handleIndexQuery('显示人物索引');
-        });
-
-        $('#lcs-settings').on('click', () => {
-            this.showSettingsDialog();
-        });
-    }
-
-    updateStats() {
-        const stats = this.plugin.getCharacterStats();
-        $('#lcs-total-characters').text(stats.total);
-        $('#lcs-main-characters').text(stats.main);
-        $('#lcs-secondary-characters').text(stats.secondary);
-        $('#lcs-background-characters').text(stats.background);
-        
-        // 更新人物列表
-        this.updateCharacterList();
-    }
-
-    updateCharacterList() {
-        const listContainer = $('#lcs-character-list');
-        listContainer.empty();
-        
-        this.plugin.characterIndex.forEach(character => {
-            const item = $(`
-                <div class="lcs-character-item" data-id="${character.id}">
-                    <div class="lcs-character-name">${character.name}</div>
-                    <div class="lcs-character-info">
-                        <span class="lcs-character-occupation">${character.occupation}</span>
-                        <span class="lcs-character-importance ${character.importance}">${this.plugin.importanceLevels[character.importance].name}</span>
-                    </div>
-                </div>
-            `);
-            
-            item.on('click', () => {
-                this.showCharacterDetails(character.id);
-            });
-            
-            listContainer.append(item);
-        });
-    }
-
-    showCharacterDetails(characterId) {
-        const character = this.plugin.characters.get(characterId);
-        if (!character) return;
-        
-        const details = $(`
-            <div class="lcs-character-details">
-                <h3>${character.name}</h3>
-                <div class="lcs-detail-section">
-                    <h4>基本信息</h4>
-                    <p><strong>重要性:</strong> ${this.plugin.importanceLevels[character.importance].name}</p>
-                    <p><strong>职业:</strong> ${character.basicInfo.occupation}</p>
-                    <p><strong>位置:</strong> ${character.basicInfo.location}</p>
-                    <p><strong>交互次数:</strong> ${character.interactionCount}</p>
-                </div>
-                <div class="lcs-detail-section">
-                    <h4>性格特征</h4>
-                    <p>${character.detailInfo.personality || '暂无信息'}</p>
-                </div>
-                <div class="lcs-detail-section">
-                    <h4>背景故事</h4>
-                    <p>${character.detailInfo.background || '暂无信息'}</p>
-                </div>
-                <button class="lcs-close-details">关闭</button>
-            </div>
-        `);
-        
-        $('body').append(details);
-        $('.lcs-close-details').on('click', () => {
-            details.remove();
-        });
-    }
-
-    showSettingsDialog() {
-        const dialog = $(`
-            <div class="lcs-settings-dialog">
-                <h3>系统设置</h3>
-                <div class="lcs-setting">
-                    <label>自动生成人物</label>
-                    <input type="checkbox" id="lcs-setting-auto-generate" ${this.plugin.settings.autoGenerate ? 'checked' : ''}>
-                </div>
-                <div class="lcs-setting">
-                    <label>最大主要人物数</label>
-                    <input type="number" id="lcs-setting-max-main" value="${this.plugin.settings.maxMainCharacters}" min="1" max="10">
-                </div>
-                <div class="lcs-setting">
-                    <label>最大次要人物数</label>
-                    <input type="number" id="lcs-setting-max-secondary" value="${this.plugin.settings.maxSecondaryCharacters}" min="1" max="20">
-                </div>
-                <div class="lcs-setting">
-                    <label>最大背景人物数</label>
-                    <input type="number" id="lcs-setting-max-background" value="${this.plugin.settings.maxBackgroundCharacters}" min="1" max="50">
-                </div>
-                <div class="lcs-setting">
-                    <label>Token预算</label>
-                    <input type="number" id="lcs-setting-token-budget" value="${this.plugin.settings.tokenBudget}" min="500" max="5000" step="100">
-                </div>
-                <div class="lcs-setting">
-                    <label>启用成长系统</label>
-                    <input type="checkbox" id="lcs-setting-enable-growth" ${this.plugin.settings.enableGrowthSystem ? 'checked' : ''}>
-                </div>
-                <div class="lcs-dialog-buttons">
-                    <button id="lcs-save-settings" class="lcs-button">保存</button>
-                    <button id="lcs-cancel-settings" class="lcs-button">取消</button>
-                </div>
-            </div>
-        `);
-        
-        $('body').append(dialog);
-        
-        $('#lcs-save-settings').on('click', () => {
-            this.plugin.settings.autoGenerate = $('#lcs-setting-auto-generate').is(':checked');
-            this.plugin.settings.maxMainCharacters = parseInt($('#lcs-setting-max-main').val());
-            this.plugin.settings.maxSecondaryCharacters = parseInt($('#lcs-setting-max-secondary').val());
-            this.plugin.settings.maxBackgroundCharacters = parseInt($('#lcs-setting-max-background').val());
-            this.plugin.settings.tokenBudget = parseInt($('#lcs-setting-token-budget').val());
-            this.plugin.settings.enableGrowthSystem = $('#lcs-setting-enable-growth').is(':checked');
-            
-            this.plugin.saveSettings();
-            this.plugin.showNotification('设置已保存', 'success');
-            dialog.remove();
-        });
-        
-        $('#lcs-cancel-settings').on('click', () => {
-            dialog.remove();
-        });
-    }
-
-    updateCharacterGrowthUI(characterId) {
-        // 更新人物成长相关的UI
-        console.log(`更新人物成长UI: ${characterId}`);
-    }
-
-    showMilestoneNotification(characterId, milestones) {
-        const character = this.plugin.characters.get(characterId);
-        if (!character) return;
-        
-        let message = `${character.name} 达成里程碑！\n`;
-        milestones.forEach(milestone => {
-            message += `- ${milestone.description}\n`;
-        });
-        
-        this.plugin.showNotification(message, 'milestone');
     }
 }
 
@@ -402,9 +320,6 @@ class CharacterGrowthSystem {
                 $(document).trigger('character_milestones_achieved', [character.id, newMilestones]);
             }
         }
-
-        // 保存成长数据
-        $(document).trigger('character_growth_saved', [character.id, growthData]);
 
         return {
             growthOccurred: growthOccurred,
@@ -2184,874 +2099,354 @@ class ComplexPersonalityEngine {
     }
 }
 
-// 主插件类 - 分层人物世界书系统
-class LayeredCharacterSystem {
+// UI管理器
+class UIManager {
     constructor() {
-        this.name = 'Layered Character Worldbook System';
-        this.version = '2.0.0';
-        
-        // 系统状态
-        this.characters = new Map(); // 所有人物数据
-        this.characterIndex = []; // 人物索引
-        this.activeEntries = new Set(); // 当前激活的世界书条目
-        this.interactionHistory = new Map(); // 交互历史
-        
-        // 配置设置
-        this.settings = {
-            enabled: true,
-            autoGenerate: true,
-            maxMainCharacters: 5,
-            maxSecondaryCharacters: 15,
-            maxBackgroundCharacters: 30,
-            tokenBudget: 2000,
-            triggerCooldown: 5 * 60 * 1000, // 5分钟冷却
-            autoUpgrade: true,
-            cleanupInterval: 30 * 60 * 1000, // 30分钟清理
-            enableGrowthSystem: true // 启用成长系统
-        };
-        
-        // 人物重要性定义
-        this.importanceLevels = {
-            main: {
-                name: '主要人物',
-                tokenBudget: 800,
-                detailLevel: 'high',
-                priority: 3,
-                upgradeThreshold: 25
-            },
-            secondary: {
-                name: '次要人物',
-                tokenBudget: 300,
-                detailLevel: 'medium',
-                priority: 2,
-                upgradeThreshold: 10
-            },
-            background: {
-                name: '背景人物',
-                tokenBudget: 100,
-                detailLevel: 'low',
-                priority: 1,
-                upgradeThreshold: 0
-            }
-        };
-        
-        // 人物生成模板
-        this.characterTemplates = {
-            names: {
-                male: ["李明", "张强", "王磊", "刘伟", "陈杰", "杨帆", "赵勇", "黄涛", "周林", "吴超"],
-                female: ["王芳", "李娜", "张丽", "刘敏", "陈静", "杨雪", "赵莉", "黄梅", "周燕", "吴红"],
-                surname: ["欧阳", "司马", "上官", "独孤", "南宫", "东方", "西门", "北冥", "南华", "东篱"]
-            },
-            personalities: {
-                main: [
-                    "开朗活泼、正直勇敢、重情重义", "内向害羞、聪明睿智、观察敏锐",
-                    "冷酷无情、行事果断、目标明确", "温柔善良、富有同情心、乐于助人",
-                    "狡猾机智、善于交际、追求利益", "严肃认真、责任心强、一丝不苟"
-                ],
-                secondary: [
-                    "开朗活泼", "内向害羞", "冷酷无情", "温柔善良", "狡猾机智",
-                    "正直勇敢", "懦弱胆小", "幽默风趣", "严肃认真", "随和友善"
-                ],
-                background: [
-                    "普通", "友善", "忙碌", "沉默", "热情", "警惕", "好奇", "疲惫"
-                ]
-            },
-            occupations: {
-                main: ["铁匠", "药师", "商会会长", "守卫队长", "魔法师"],
-                secondary: ["商人", "士兵", "学者", "医生", "盗贼", "工匠", "艺术家"],
-                background: ["村民", "市民", "路人", "学徒", "伙计", "仆人"]
-            },
-            backgrounds: {
-                main: [
-                    "出身名门望族，家族显赫",
-                    "孤儿院长大，自学成才",
-                    "世家传承，技艺精湛",
-                    "游历四方，见多识广",
-                    "隐居山林，神秘莫测"
-                ],
-                secondary: [
-                    "出身普通家庭，努力奋斗",
-                    "从小拜师学艺，技艺纯熟",
-                    "经商致富，家道殷实",
-                    "从军归来，经验丰富",
-                    "求学多年，知识渊博"
-                ],
-                background: [
-                    "本地居民", "外来移民", "打工谋生", "退休养老", "临时停留"
-                ]
-            }
-        };
-        
-        // 触发关键词
-        this.triggerKeywords = {
-            generate: ['遇到', '看见', '发现', '认识', '碰到', '陌生人', '路人', '居民', '村民', '市民'],
-            index: ['人物索引', '角色列表', '所有人物', '人物总览', '有哪些人', '人物统计'],
-            location: ['酒馆', '市场', '铁匠铺', '药店', '城门', '旅店', '商店', '街道']
-        };
-        
-        // 初始化组件
-        this.worldBookManager = new WorldBookManager(this);
-        this.triggerSystem = new SmartTriggerSystem(this);
-        this.importanceManager = new CharacterImportanceManager(this);
-        this.worldSettingDetector = new WorldSettingDetector();
-        this.complexPersonalityEngine = new ComplexPersonalityEngine();
-        this.growthSystem = new CharacterGrowthSystem();
-        this.uiManager = new UIManager(this);
-        
-        // 设置反向引用
-        this.growthSystem.plugin = this;
-        this.complexPersonalityEngine.plugin = this;
-        this.worldSettingDetector.plugin = this;
+        this.panelCreated = false;
     }
 
-    // 插件初始化
-    async init() {
-        console.log(`${this.name} v${this.version} 插件已加载`);
+    createUI() {
+        if (this.panelCreated) return;
         
-        // 加载设置
-        this.loadSettings();
-        
-        // 初始化世界书
-        await this.initializeWorldBook();
-        
-        // 初始化成长系统
-        if (this.settings.enableGrowthSystem) {
-            this.initializeGrowthSystem();
-        }
-        
-        // 注册事件监听器
-        this.registerEventListeners();
-        
-        // 创建用户界面
-        this.uiManager.createUI();
-        
-        // 启动定时任务
-        this.startPeriodicTasks();
-        
-        console.log('分层人物世界书系统初始化完成');
+        // 创建控制面板
+        const panel = $(`
+            <div id="lcs-control-panel" class="lcs-panel">
+                <h3>分层人物世界书系统</h3>
+                <div class="lcs-stats">
+                    <div class="lcs-stat">
+                        <span class="lcs-stat-label">总人物数:</span>
+                        <span class="lcs-stat-value" id="lcs-total-characters">0</span>
+                    </div>
+                    <div class="lcs-stat">
+                        <span class="lcs-stat-label">主要人物:</span>
+                        <span class="lcs-stat-value" id="lcs-main-characters">0</span>
+                    </div>
+                    <div class="lcs-stat">
+                        <span class="lcs-stat-label">次要人物:</span>
+                        <span class="lcs-stat-value" id="lcs-secondary-characters">0</span>
+                    </div>
+                    <div class="lcs-stat">
+                        <span class="lcs-stat-label">背景人物:</span>
+                        <span class="lcs-stat-value" id="lcs-background-characters">0</span>
+                    </div>
+                </div>
+                <div class="lcs-controls">
+                    <button id="lcs-toggle-enabled" class="lcs-button">启用系统</button>
+                    <button id="lcs-show-index" class="lcs-button">显示索引</button>
+                    <button id="lcs-settings" class="lcs-button">设置</button>
+                </div>
+                <div class="lcs-character-list" id="lcs-character-list"></div>
+            </div>
+        `);
+
+        $('body').append(panel);
+        this.setupEventListeners();
+        this.updateStats();
+        this.panelCreated = true;
     }
 
-    // 加载设置
-    loadSettings() {
-        const saved = localStorage.getItem('layeredCharacterSystemSettings');
-        if (saved) {
-            try {
-                this.settings = { ...this.settings, ...JSON.parse(saved) };
-            } catch (error) {
-                console.error('加载设置失败:', error);
-            }
-        }
+    setupEventListeners() {
+        $('#lcs-toggle-enabled').on('click', () => {
+            context.extensionSettings[settingsKey].enabled = !context.extensionSettings[settingsKey].enabled;
+            $('#lcs-toggle-enabled').text(context.extensionSettings[settingsKey].enabled ? '禁用系统' : '启用系统');
+            context.saveSettingsDebounced();
+            showNotification(
+                `系统已${context.extensionSettings[settingsKey].enabled ? '启用' : '禁用'}`,
+                'info'
+            );
+        });
+
+        $('#lcs-show-index').on('click', () => {
+            handleIndexQuery();
+        });
+
+        $('#lcs-settings').on('click', () => {
+            this.showSettingsDialog();
+        });
     }
 
-    // 保存设置
-    saveSettings() {
-        try {
-            localStorage.setItem('layeredCharacterSystemSettings', JSON.stringify(this.settings));
-        } catch (error) {
-            console.error('保存设置失败:', error);
-        }
+    updateStats() {
+        const stats = getCharacterStats();
+        $('#lcs-total-characters').text(stats.total);
+        $('#lcs-main-characters').text(stats.main);
+        $('#lcs-secondary-characters').text(stats.secondary);
+        $('#lcs-background-characters').text(stats.background);
+        
+        // 更新人物列表
+        this.updateCharacterList();
     }
 
-    // 初始化世界书
-    async initializeWorldBook() {
-        try {
-            // 创建蓝灯索引条目
-            await this.worldBookManager.createIndexEntry();
+    updateCharacterList() {
+        const listContainer = $('#lcs-character-list');
+        if (!listContainer.length) return;
+        
+        listContainer.empty();
+        
+        characterIndex.forEach(character => {
+            const item = $(`
+                <div class="lcs-character-item" data-id="${character.id}">
+                    <div class="lcs-character-name">${character.name}</div>
+                    <div class="lcs-character-info">
+                        <span class="lcs-character-occupation">${character.occupation}</span>
+                        <span class="lcs-character-importance ${character.importance}">${importanceLevels[character.importance].name}</span>
+                    </div>
+                </div>
+            `);
             
-            // 加载现有人物
-            await this.loadExistingCharacters();
-            
-            console.log('世界书初始化完成');
-        } catch (error) {
-            console.error('世界书初始化失败:', error);
-        }
-    }
-
-    // 加载现有人物
-    async loadExistingCharacters() {
-        try {
-            const worldBook = await this.worldBookManager.getCurrentWorldBook();
-            
-            // 查找人物相关条目
-            worldBook.entries.forEach(entry => {
-                if (entry.id && entry.id.startsWith('CHAR_')) {
-                    const character = this.parseCharacterFromEntry(entry);
-                    if (character) {
-                        this.characters.set(character.id, character);
-                        this.updateCharacterIndex(character);
-                        
-                        // 初始化成长数据
-                        if (this.settings.enableGrowthSystem && !character.growthData) {
-                            character.growthData = this.growthSystem.initializeCharacterGrowth(character);
-                        }
-                    }
-                }
+            item.on('click', () => {
+                this.showCharacterDetails(character.id);
             });
             
-            // 更新索引条目
-            await this.updateIndexEntry();
+            listContainer.append(item);
+        });
+    }
+
+    showCharacterDetails(characterId) {
+        const character = characters.get(characterId);
+        if (!character) return;
+        
+        const details = $(`
+            <div class="lcs-character-details">
+                <h3>${character.name}</h3>
+                <div class="lcs-detail-section">
+                    <h4>基本信息</h4>
+                    <p><strong>重要性:</strong> ${importanceLevels[character.importance].name}</p>
+                    <p><strong>职业:</strong> ${character.basicInfo.occupation}</p>
+                    <p><strong>位置:</strong> ${character.basicInfo.location}</p>
+                    <p><strong>交互次数:</strong> ${character.interactionCount}</p>
+                </div>
+                <div class="lcs-detail-section">
+                    <h4>性格特征</h4>
+                    <p>${character.detailInfo.personality || '暂无信息'}</p>
+                </div>
+                <div class="lcs-detail-section">
+                    <h4>背景故事</h4>
+                    <p>${character.detailInfo.background || '暂无信息'}</p>
+                </div>
+                ${character.detailInfo.complexPersonality ? `
+                <div class="lcs-detail-section">
+                    <h4>复杂性格分析</h4>
+                    <p>${character.detailInfo.complexPersonality.corePersonality}</p>
+                </div>
+                ` : ''}
+                <button class="lcs-close-details">关闭</button>
+            </div>
+        `);
+        
+        $('body').append(details);
+        $('.lcs-close-details').on('click', () => {
+            details.remove();
+        });
+    }
+
+    showSettingsDialog() {
+        const settings = context.extensionSettings[settingsKey];
+        const dialog = $(`
+            <div class="lcs-settings-dialog">
+                <h3>系统设置</h3>
+                <div class="lcs-setting">
+                    <label>自动生成人物</label>
+                    <input type="checkbox" id="lcs-setting-auto-generate" ${settings.autoGenerate ? 'checked' : ''}>
+                </div>
+                <div class="lcs-setting">
+                    <label>最大主要人物数</label>
+                    <input type="number" id="lcs-setting-max-main" value="${settings.maxMainCharacters}" min="1" max="10">
+                </div>
+                <div class="lcs-setting">
+                    <label>最大次要人物数</label>
+                    <input type="number" id="lcs-setting-max-secondary" value="${settings.maxSecondaryCharacters}" min="1" max="20">
+                </div>
+                <div class="lcs-setting">
+                    <label>最大背景人物数</label>
+                    <input type="number" id="lcs-setting-max-background" value="${settings.maxBackgroundCharacters}" min="1" max="50">
+                </div>
+                <div class="lcs-setting">
+                    <label>Token预算</label>
+                    <input type="number" id="lcs-setting-token-budget" value="${settings.tokenBudget}" min="500" max="5000" step="100">
+                </div>
+                <div class="lcs-setting">
+                    <label>自动升级</label>
+                    <input type="checkbox" id="lcs-setting-auto-upgrade" ${settings.autoUpgrade ? 'checked' : ''}>
+                </div>
+                <div class="lcs-setting">
+                    <label>启用成长系统</label>
+                    <input type="checkbox" id="lcs-setting-enable-growth" ${settings.enableGrowthSystem ? 'checked' : ''}>
+                </div>
+                <div class="lcs-dialog-buttons">
+                    <button id="lcs-save-settings" class="lcs-button">保存</button>
+                    <button id="lcs-cancel-settings" class="lcs-button">取消</button>
+                </div>
+            </div>
+        `);
+        
+        $('body').append(dialog);
+        
+        $('#lcs-save-settings').on('click', () => {
+            settings.autoGenerate = $('#lcs-setting-auto-generate').is(':checked');
+            settings.maxMainCharacters = parseInt($('#lcs-setting-max-main').val());
+            settings.maxSecondaryCharacters = parseInt($('#lcs-setting-max-secondary').val());
+            settings.maxBackgroundCharacters = parseInt($('#lcs-setting-max-background').val());
+            settings.tokenBudget = parseInt($('#lcs-setting-token-budget').val());
+            settings.autoUpgrade = $('#lcs-setting-auto-upgrade').is(':checked');
+            settings.enableGrowthSystem = $('#lcs-setting-enable-growth').is(':checked');
             
-            console.log(`加载了 ${this.characters.size} 个现有人物`);
-        } catch (error) {
-            console.error('加载现有人物失败:', error);
-        }
-    }
-
-    // 从条目解析人物
-    parseCharacterFromEntry(entry) {
-        try {
-            const lines = entry.content.split('\n');
-            const character = {
-                id: entry.id,
-                name: '',
-                importance: 'background',
-                basicInfo: {},
-                detailInfo: {},
-                keys: entry.keys || [],
-                lastUpdated: new Date().toISOString()
-            };
-            
-            // 解析基本信息
-            lines.forEach(line => {
-                if (line.includes('姓名：')) {
-                    character.name = line.split('姓名：')[1]?.trim();
-                } else if (line.includes('重要性：')) {
-                    const importance = line.split('重要性：')[1]?.trim();
-                    if (importance.includes('主要')) character.importance = 'main';
-                    else if (importance.includes('次要')) character.importance = 'secondary';
-                }
-            });
-            
-            if (character.name) {
-                return character;
-            }
-        } catch (error) {
-            console.error('解析人物条目失败:', error);
-        }
-        
-        return null;
-    }
-
-    // 初始化成长系统
-    initializeGrowthSystem() {
-        // 为现有人物初始化成长数据
-        this.characters.forEach((character, characterId) => {
-            if (!character.growthData) {
-                character.growthData = this.growthSystem.initializeCharacterGrowth(character);
-            }
+            context.saveSettingsDebounced();
+            showNotification('设置已保存', 'success');
+            dialog.remove();
         });
         
-        // 监听成长相关事件
-        this.setupGrowthEventListeners();
-        
-        console.log('成长系统初始化完成');
-    }
-
-    // 设置成长事件监听器
-    setupGrowthEventListeners() {
-        // 监听人物成长事件
-        $(document).on('character_grew', (e, characterId, growthResult) => {
-            console.log(`人物成长事件：${characterId}`, growthResult);
-            this.uiManager.updateCharacterGrowthUI(characterId);
-        });
-        
-        // 监听里程碑达成事件
-        $(document).on('character_milestones_achieved', (e, characterId, milestones) => {
-            console.log(`人物里程碑达成：${characterId}`, milestones);
-            this.uiManager.showMilestoneNotification(characterId, milestones);
-        });
-        
-        // 监听成长数据保存事件
-        $(document).on('character_growth_saved', (e, characterId, growthData) => {
-            console.log(`成长数据已保存：${characterId}`);
+        $('#lcs-cancel-settings').on('click', () => {
+            dialog.remove();
         });
     }
 
-    // 注册事件监听器
-    registerEventListeners() {
-        // 监听消息发送
-        $(document).on('message_send', (e, data) => {
-            if (this.settings.enabled) {
-                this.handleMessageSend(data);
-            }
+    updateCharacterGrowthUI(characterId) {
+        // 更新人物成长相关的UI
+        console.log(`更新人物成长UI: ${characterId}`);
+    }
+
+    showMilestoneNotification(characterId, milestones) {
+        const character = characters.get(characterId);
+        if (!character) return;
+        
+        let message = `${character.name} 达成里程碑！\n`;
+        milestones.forEach(milestone => {
+            message += `- ${milestone.description}\n`;
         });
         
-        // 监听消息接收
-        $(document).on('message_received', (e, data) => {
-            if (this.settings.enabled) {
-                this.handleMessageReceived(data);
-            }
-        });
-        
-        // 监听世界书更新
-        $(document).on('worldbook_updated', (e, data) => {
-            this.handleWorldBookUpdate(data);
-        });
+        showNotification(message, 'milestone');
     }
+}
 
-    // 处理消息发送
-    async handleMessageSend(data) {
-        const message = data.message;
-        
-        // 检查是否需要生成新人物
-        if (this.settings.autoGenerate && this.shouldGenerateCharacter(message)) {
-            await this.handleCharacterGeneration(message, data);
-        }
-        
-        // 检查是否需要查询人物索引
-        if (this.shouldShowIndex(message)) {
-            await this.handleIndexQuery(message);
-        }
-        
-        // 检测成长事件
-        if (this.settings.enableGrowthSystem) {
-            await this.detectAndProcessGrowthEvents(message, data);
-        }
-        
-        // 更新交互历史
-        this.updateInteractionHistory(message);
-    }
+// 创建全局实例
+const worldBookManager = new WorldBookManager();
+const smartTriggerSystem = new SmartTriggerSystem();
+const importanceManager = new CharacterImportanceManager();
+const growthSystem = new CharacterGrowthSystem();
+const worldSettingDetector = new WorldSettingDetector();
+const complexPersonalityEngine = new ComplexPersonalityEngine();
+const uiManager = new UIManager();
 
-    // 处理消息接收
-    handleMessageReceived(data) {
-        // AI回复中可能包含人物信息，需要处理
-        this.processAIMessage(data.message);
-    }
+// 工具函数
+function generateCharacterId() {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substr(2, 5);
+    return `CHAR_${timestamp}_${random}`.toUpperCase();
+}
 
-    // 处理世界书更新
-    handleWorldBookUpdate(data) {
-        console.log('世界书已更新:', data);
-    }
+function getRandomItem(array) {
+    return array[Math.floor(Math.random() * array.length)];
+}
 
-    // 判断是否需要生成人物
-    shouldGenerateCharacter(message) {
-        return this.triggerKeywords.generate.some(keyword => 
-            message.toLowerCase().includes(keyword.toLowerCase())
-        );
-    }
+function getRandomItems(array, min, max) {
+    const count = Math.floor(Math.random() * (max - min + 1)) + min;
+    const shuffled = [...array].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+}
 
-    // 判断是否需要显示索引
-    shouldShowIndex(message) {
-        return this.triggerKeywords.index.some(keyword => 
-            message.toLowerCase().includes(keyword.toLowerCase())
-        );
-    }
+function extractLocation(message) {
+    const locations = ['酒馆', '市场', '铁匠铺', '药店', '城门', '旅店', '商店', '街道'];
+    return locations.find(location => message.includes(location));
+}
 
-    // 处理人物生成
-    async handleCharacterGeneration(message, context) {
-        try {
-            // 检查人物数量限制
-            if (this.isCharacterLimitReached()) {
-                this.showNotification('已达到人物数量限制', 'warning');
-                return;
-            }
-            
-            // 生成新人物
-            const character = await this.generateCharacter(message, context);
-            
-            if (character) {
-                // 添加到系统
-                this.characters.set(character.id, character);
-                this.updateCharacterIndex(character);
-                
-                // 创建世界书条目
-                await this.worldBookManager.createCharacterEntry(character);
-                
-                // 更新索引条目
-                await this.updateIndexEntry();
-                
-                // 显示通知
-                this.showNotification(`生成新人物：${character.name}`, 'success');
-                
-                // 记录生成事件
-                this.logEvent('character_generated', { characterId: character.id, name: character.name });
-            }
-        } catch (error) {
-            console.error('人物生成失败:', error);
-            this.showNotification('人物生成失败', 'error');
-        }
-    }
-
-    // 生成人物
-    async generateCharacter(message, context) {
-        console.log('开始生成人物...');
-        
-        // 1. 检测世界设定
-        const worldSetting = this.worldSettingDetector.detectWorldSetting(context);
-        console.log('世界设定检测结果:', worldSetting);
-        
-        // 2. 确定人物重要性
-        const importance = this.determineCharacterImportance(message, context);
-        
-        // 3. 生成人物ID
-        const characterId = this.generateCharacterId();
-        
-        // 4. 生成符合世界设定的基本信息
-        const basicInfo = this.generateWorldAwareBasicInfo(importance, context, worldSetting);
-        
-        // 5. 生成详细信息
-        const detailInfo = await this.generateLogicalDetailInfo(importance, basicInfo, worldSetting);
-        
-        // 6. 创建人物对象
-        const character = {
-            id: characterId,
-            name: basicInfo.name,
-            importance: importance,
-            basicInfo: basicInfo,
-            detailInfo: detailInfo,
-            keys: [basicInfo.name, basicInfo.occupation],
-            worldSetting: worldSetting.setting,
-            createdAt: new Date().toISOString(),
-            lastUpdated: new Date().toISOString(),
-            interactionCount: 0,
-            plotRelevance: 0,
-            playerRelationship: 0,
-            personalityValidation: null
-        };
-        
-        // 7. 验证人物一致性
-        const validation = this.complexPersonalityEngine.validateComplexPersonalityConsistency(character);
-        character.personalityValidation = validation;
-        
-        // 8. 初始化成长数据
-        if (this.settings.enableGrowthSystem) {
-            character.growthData = this.growthSystem.initializeCharacterGrowth(character);
-        }
-        
-        console.log('人物生成完成:', character.name);
-        console.log('性格验证结果:', validation);
-        
-        return character;
-    }
-
-    // 确定人物重要性
-    determineCharacterImportance(message, context) {
-        let score = 0;
-        
-        // 基于消息内容评分
-        if (message.includes('重要') || message.includes('关键')) score += 3;
-        if (message.includes('导师') || message.includes('首领')) score += 2;
-        if (message.includes('朋友') || message.includes('盟友')) score += 1;
-        
-        // 基于位置评分
-        const locationKeywords = ['铁匠铺', '药店', '商会', '守卫塔'];
-        if (locationKeywords.some(keyword => message.includes(keyword))) {
-            score += 2;
-        }
-        
-        // 基于当前人物数量评分
-        const mainCount = this.getCharacterCountByImportance('main');
-        const secondaryCount = this.getCharacterCountByImportance('secondary');
-        
-        if (mainCount < this.settings.maxMainCharacters && score >= 3) {
-            return 'main';
-        } else if (secondaryCount < this.settings.maxSecondaryCharacters && score >= 1) {
-            return 'secondary';
-        } else {
-            return 'background';
-        }
-    }
-
-    // 生成人物ID
-    generateCharacterId() {
-        const timestamp = Date.now().toString(36);
-        const random = Math.random().toString(36).substr(2, 5);
-        return `CHAR_${timestamp}_${random}`.toUpperCase();
-    }
-
-    // 生成符合世界设定的基本信息
-    generateWorldAwareBasicInfo(importance, context, worldSetting) {
-        const gender = Math.random() < 0.5 ? 'male' : 'female';
-        const useSurname = Math.random() < 0.3;
-        
-        let name;
-        if (useSurname) {
-            const surname = this.getRandomItem(this.characterTemplates.names.surname);
-            const givenName = this.getRandomItem(this.characterTemplates.names[gender]);
-            name = surname + givenName;
-        } else {
-            name = this.getRandomItem(this.characterTemplates.names[gender]);
-        }
-        
-        // 根据世界设定选择职业
-        const allowedOccupations = worldSetting.details.allowedOccupations;
-        const occupationTemplates = this.characterTemplates.occupations[importance].filter(occ => 
-            allowedOccupations.some(allowed => occ.includes(allowed) || allowed.includes(occ))
-        );
-        
-        const occupation = occupationTemplates.length > 0 ? 
-            this.getRandomItem(occupationTemplates) : 
-            this.getRandomItem(allowedOccupations);
-        
-        // 根据世界设定选择背景
-        const allowedBackgrounds = worldSetting.details.allowedBackgrounds;
-        const backgroundTemplates = this.characterTemplates.backgrounds[importance].filter(bg => 
-            allowedBackgrounds.some(allowed => bg.includes(allowed) || allowed.includes(bg))
-        );
-        
-        const background = backgroundTemplates.length > 0 ? 
-            this.getRandomItem(backgroundTemplates) : 
-            this.getRandomItem(allowedBackgrounds);
-        
-        return {
-            name: name,
-            gender: gender === 'male' ? '男' : '女',
-            age: Math.floor(Math.random() * (80 - 16 + 1)) + 16,
-            occupation: occupation,
-            location: this.extractLocation(context.message) || '未知地点',
-            worldSetting: worldSetting.setting
-        };
-    }
-
-    // 生成具有逻辑一致性的详细信息
-    async generateLogicalDetailInfo(importance, basicInfo, worldSetting) {
-        // 1. 生成基础详细信息
-        const baseDetailInfo = this.generateDetailInfo(importance, basicInfo);
-        
-        // 2. 应用复杂性格引擎
-        const tempCharacter = {
-            basicInfo: basicInfo,
-            detailInfo: baseDetailInfo
-        };
-        
-        const complexPersonality = this.complexPersonalityEngine.generateComplexCharacter(tempCharacter);
-        
-        // 3. 更新性格信息
-        baseDetailInfo.personality = complexPersonality.corePersonality;
-        baseDetailInfo.complexPersonality = complexPersonality;
-        
-        // 4. 生成性格描述
-        baseDetailInfo.personalityDescription = this.complexPersonalityEngine.generatePersonalityDescription(complexPersonality);
-        
-        // 5. 根据世界设定调整其他信息
-        this.adjustDetailInfoForWorldSetting(baseDetailInfo, worldSetting);
-        
-        // 6. 确保所有信息的一致性
-        this.ensureConsistency(baseDetailInfo, basicInfo, worldSetting);
-        
-        return baseDetailInfo;
-    }
-
-    // 生成基础详细信息
-    generateDetailInfo(importance, basicInfo) {
-        const templates = {
-            main: {
-                personality: this.getRandomItem(this.characterTemplates.personalities.main),
-                background: this.getRandomItem(this.characterTemplates.backgrounds.main),
-                appearance: this.generateDetailedAppearance(),
-                skills: this.generateDetailedSkills(),
-                relationships: this.generateDetailedRelationships(),
-                story: this.generateDetailedStory()
-            },
-            secondary: {
-                personality: this.getRandomItem(this.characterTemplates.personalities.secondary),
-                background: this.getRandomItem(this.characterTemplates.backgrounds.secondary),
-                appearance: this.generateMediumAppearance(),
-                skills: this.generateMediumSkills(),
-                relationships: this.generateMediumRelationships()
-            },
-            background: {
-                personality: this.getRandomItem(this.characterTemplates.personalities.background),
-                background: this.getRandomItem(this.characterTemplates.backgrounds.background),
-                appearance: this.generateSimpleAppearance(),
-                skills: this.generateSimpleSkills()
-            }
-        };
-        
-        return templates[importance];
-    }
-
-    // 生成详细外貌
-    generateDetailedAppearance() {
-        const features = [
-            "身材高大魁梧", "中等身材", "身材瘦削", "体型丰满",
-            "面容俊美", "相貌平平", "饱经风霜", "年轻有活力"
-        ];
-        
-        const styles = [
-            "留着长发", "短发利落", "光头", "扎着辫子",
-            "有胡须", "面容干净", "有疤痕", "有纹身"
-        ];
-        
-        const clothing = [
-            "穿着华丽的服装", "衣着朴素", "穿着工作服", "穿着盔甲",
-            "穿着长袍", "穿着便装", "穿着制服", "穿着奇装异服"
-        ];
-        
-        return `${this.getRandomItem(features)}，${this.getRandomItem(styles)}，${this.getRandomItem(clothing)}`;
-    }
-
-    // 生成中等外貌
-    generateMediumAppearance() {
-        const appearances = [
-            "高个子", "矮个子", "身材魁梧", "身材瘦削",
-            "面容俊美", "相貌平平", "留着长发", "短发利落"
-        ];
-        
-        return this.getRandomItems(appearances, 2, 3).join('、');
-    }
-
-    // 生成简单外貌
-    generateSimpleAppearance() {
+function generateAppearance(importance) {
+    if (importance === 'main') {
+        const features = ["身材高大魁梧", "中等身材", "身材瘦削", "体型丰满", "面容俊美", "相貌平平", "饱经风霜", "年轻有活力"];
+        const styles = ["留着长发", "短发利落", "光头", "扎着辫子", "有胡须", "面容干净", "有疤痕", "有纹身"];
+        const clothing = ["穿着华丽的服装", "衣着朴素", "穿着工作服", "穿着盔甲", "穿着长袍", "穿着便装", "穿着制服", "穿着奇装异服"];
+        return `${getRandomItem(features)}，${getRandomItem(styles)}，${getRandomItem(clothing)}`;
+    } else if (importance === 'secondary') {
+        const appearances = ["高个子", "矮个子", "身材魁梧", "身材瘦削", "面容俊美", "相貌平平", "留着长发", "短发利落"];
+        return getRandomItems(appearances, 2, 3).join('、');
+    } else {
         const simple = ["普通", "友善", "忙碌", "沉默"];
-        return this.getRandomItem(simple);
+        return getRandomItem(simple);
     }
+}
 
-    // 生成详细技能
-    generateDetailedSkills() {
+function generateSkills(importance) {
+    if (importance === 'main') {
         const skills = [
             "武器锻造：精通", "盔甲制作：熟练", "金属鉴定：专家",
             "商业谈判：精通", "商品鉴定：熟练", "市场信息：丰富",
             "医疗技术：精通", "草药学：熟练", "诊断：专家"
         ];
-        
-        return this.getRandomItems(skills, 3, 5).join('，');
-    }
-
-    // 生成中等技能
-    generateMediumSkills() {
-        const skills = [
-            "专业技能", "社交能力", "战斗技巧", "知识水平", "手工艺"
-        ];
-        
-        return `${this.getRandomItem(skills)}：熟练`;
-    }
-
-    // 生成简单技能
-    generateSimpleSkills() {
+        return getRandomItems(skills, 3, 5).join('，');
+    } else if (importance === 'secondary') {
+        const skills = ["专业技能", "社交能力", "战斗技巧", "知识水平", "手工艺"];
+        return `${getRandomItem(skills)}：熟练`;
+    } else {
         const skills = ["基础技能", "普通能力", "日常工作"];
-        return this.getRandomItem(skills);
+        return getRandomItem(skills);
     }
+}
 
-    // 生成详细关系
-    generateDetailedRelationships() {
+function generateRelationships(importance) {
+    if (importance === 'main') {
         const relationships = [
             "与王铁匠：商业伙伴，互相信任",
             "与李商人：竞争对手，关系紧张",
             "与赵药师：好友，经常合作",
             "与张守卫：上下级，相互尊重"
         ];
-        
-        return this.getRandomItems(relationships, 2, 4).join('；');
-    }
-
-    // 生成中等关系
-    generateMediumRelationships() {
+        return getRandomItems(relationships, 2, 4).join('；');
+    } else if (importance === 'secondary') {
         const relationships = ["友好", "中立", "警惕", "竞争"];
-        return this.getRandomItem(relationships);
+        return getRandomItem(relationships);
+    } else {
+        return "";
     }
+}
 
-    // 生成详细背景故事
-    generateDetailedStory() {
-        const stories = [
-            "出身名门望族，家族显赫，从小接受良好教育",
-            "孤儿院长大，自学成才，凭借努力获得今天的成就",
-            "世家传承，技艺精湛，是家族中的佼佼者",
-            "游历四方，见多识广，拥有丰富的阅历和经验",
-            "隐居山林，神秘莫测，很少有人知道其真实身份"
-        ];
-        
-        return this.getRandomItem(stories);
-    }
-
-    // 根据世界设定调整详细信息
-    adjustDetailInfoForWorldSetting(detailInfo, worldSetting) {
-        const setting = worldSetting.details;
-        
-        // 根据技术水平调整技能
-        if (setting.technologyLevel === 'modern') {
-            detailInfo.skills = this.adjustSkillsForModernWorld(detailInfo.skills);
-        } else if (setting.technologyLevel === 'pre-industrial') {
-            detailInfo.skills = this.adjustSkillsForFantasyWorld(detailInfo.skills);
-        } else if (setting.technologyLevel === 'advanced') {
-            detailInfo.skills = this.adjustSkillsForSciFiWorld(detailInfo.skills);
+function getCharacterCountByImportance(importance) {
+    let count = 0;
+    characters.forEach(character => {
+        if (character.importance === importance) {
+            count++;
         }
-        
-        // 根据社会结构调整关系
-        if (setting.socialStructure === 'contemporary') {
-            detailInfo.relationships = this.adjustRelationshipsForModernWorld(detailInfo.relationships);
-        } else if (setting.socialStructure === 'feudal') {
-            detailInfo.relationships = this.adjustRelationshipsForFantasyWorld(detailInfo.relationships);
-        }
-    }
+    });
+    return count;
+}
 
-    // 调整现代世界技能
-    adjustSkillsForModernWorld(skills) {
-        const modernSkills = {
-            '武器锻造': '机械维修',
-            '草药学': '医学知识',
-            '商业谈判': '商业管理',
-            '魔法': '科技知识',
-            '剑术': '格斗技巧'
-        };
-        
-        let adjustedSkills = skills;
-        Object.keys(modernSkills).forEach(oldSkill => {
-            adjustedSkills = adjustedSkills.replace(new RegExp(oldSkill, 'g'), modernSkills[oldSkill]);
-        });
-        
-        return adjustedSkills;
+function updateCharacterIndex(character) {
+    const indexEntry = {
+        id: character.id,
+        name: character.name,
+        occupation: character.basicInfo.occupation,
+        importance: character.importance,
+        status: 'active',
+        lastSeen: character.basicInfo.location,
+        lastUpdated: character.lastUpdated
+    };
+    
+    // 更新或添加索引
+    const existingIndex = characterIndex.findIndex(item => item.id === character.id);
+    if (existingIndex >= 0) {
+        characterIndex[existingIndex] = indexEntry;
+    } else {
+        characterIndex.push(indexEntry);
     }
+}
 
-    // 调整奇幻世界技能
-    adjustSkillsForFantasyWorld(skills) {
-        const fantasySkills = {
-            '机械维修': '武器锻造',
-            '医学知识': '草药学',
-            '商业管理': '商业谈判',
-            '科技知识': '魔法',
-            '格斗技巧': '剑术'
-        };
-        
-        let adjustedSkills = skills;
-        Object.keys(fantasySkills).forEach(oldSkill => {
-            adjustedSkills = adjustedSkills.replace(new RegExp(oldSkill, 'g'), fantasySkills[oldSkill]);
-        });
-        
-        return adjustedSkills;
-    }
-
-    // 调整科幻世界技能
-    adjustSkillsForSciFiWorld(skills) {
-        const scifiSkills = {
-            '武器锻造': '能量武器制造',
-            '草药学': '生物医学',
-            '商业谈判': '星际贸易',
-            '魔法': '超能力',
-            '剑术': '能量剑技巧'
-        };
-        
-        let adjustedSkills = skills;
-        Object.keys(scifiSkills).forEach(oldSkill => {
-            adjustedSkills = adjustedSkills.replace(new RegExp(oldSkill, 'g'), scifiSkills[oldSkill]);
-        });
-        
-        return adjustedSkills;
-    }
-
-    // 调整现代世界关系
-    adjustRelationshipsForModernWorld(relationships) {
-        return relationships.replace(/商会/g, '公司')
-                      .replace(/领主/g, '总裁')
-                      .replace(/骑士/g, '保镖')
-                      .replace(/国王/g, '总统');
-    }
-
-    // 调整奇幻世界关系
-    adjustRelationshipsForFantasyWorld(relationships) {
-        return relationships.replace(/公司/g, '商会')
-                      .replace(/总裁/g, '领主')
-                      .replace(/保镖/g, '骑士')
-                      .replace(/总统/g, '国王');
-    }
-
-    // 确保信息一致性
-    ensureConsistency(detailInfo, basicInfo, worldSetting) {
-        // 1. 验证世界设定一致性
-        const validation = this.worldSettingDetector.validateCharacterForWorld(
-            { basicInfo, detailInfo }, 
-            worldSetting.details
-        );
-        
-        if (!validation.valid) {
-            console.warn('人物世界设定验证失败:', validation.issues);
-        }
-        
-        // 2. 确保年龄与经历匹配
-        this.ensureAgeExperienceConsistency(detailInfo, basicInfo);
-        
-        // 3. 确保职业与技能匹配
-        this.ensureOccupationSkillConsistency(detailInfo, basicInfo);
-    }
-
-    // 确保年龄与经历一致性
-    ensureAgeExperienceConsistency(detailInfo, basicInfo) {
-        const age = basicInfo.age;
-        const story = detailInfo.story || '';
-        
-        // 年轻人物不应该有过于丰富的经历
-        if (age <= 25 && story.includes('多年')) {
-            detailInfo.story = story.replace('多年', '几年');
-        }
-        
-        // 年长人物应该有相应的经历描述
-        if (age >= 50 && !story.includes('丰富') && !story.includes('多年')) {
-            detailInfo.story += '，拥有丰富的人生阅历';
-        }
-    }
-
-    // 确保职业与技能一致性
-    ensureOccupationSkillConsistency(detailInfo, basicInfo) {
-        const occupation = basicInfo.occupation;
-        const skills = detailInfo.skills;
-        
-        // 为不同职业添加核心技能
-        const coreSkills = {
-            '医生': '医学知识',
-            '铁匠': '武器锻造',
-            '商人': '商业谈判',
-            '法师': '魔法',
-            '科学家': '科学研究'
-        };
-        
-        Object.keys(coreSkills).forEach(occ => {
-            if (occupation.includes(occ) && !skills.includes(coreSkills[occ])) {
-                detailInfo.skills += `，${coreSkills[occ]}：精通`;
-            }
-        });
-    }
-
-    // 更新人物索引
-    updateCharacterIndex(character) {
-        const indexEntry = {
-            id: character.id,
-            name: character.name,
-            occupation: character.basicInfo.occupation,
-            importance: character.importance,
-            status: 'active',
-            lastSeen: character.basicInfo.location,
-            lastUpdated: character.lastUpdated
-        };
-        
-        // 更新或添加索引
-        const existingIndex = this.characterIndex.findIndex(item => item.id === character.id);
-        if (existingIndex >= 0) {
-            this.characterIndex[existingIndex] = indexEntry;
-        } else {
-            this.characterIndex.push(indexEntry);
-        }
-    }
-
-    // 更新索引条目
-    async updateIndexEntry() {
-        try {
-            const indexContent = this.generateIndexContent();
-            await this.worldBookManager.updateIndexEntry(indexContent);
-        } catch (error) {
-            console.error('更新索引条目失败:', error);
-        }
-    }
-
-    // 生成索引内容
-    generateIndexContent() {
-        const importanceEmoji = {
-            main: '🌟',
-            secondary: '⭐',
-            background: '💫'
-        };
-        
-        let content = `【世界人物索引】
+function generateIndexContent() {
+    const importanceEmoji = {
+        main: '🌟',
+        secondary: '⭐',
+        background: '💫'
+    };
+    
+    let content = `【世界人物索引】
 📋 **人物总览表**
 格式：[ID] 姓名 | 职业 | 重要性 | 关系状态 | 最近出现
 👥 **已登记人物**：
 `;
-        
-        this.characterIndex.forEach(character => {
-            content += `[${character.id}] ${character.name} | ${character.occupation} | ${importanceEmoji[character.importance]}${this.importanceLevels[character.importance].name} | ${character.status} | ${character.lastSeen}\n`;
-        });
-        
-        const stats = this.getCharacterStats();
-        content += `
+    
+    characterIndex.forEach(character => {
+        content += `[${character.id}] ${character.name} | ${character.occupation} | ${importanceEmoji[character.importance]}${importanceLevels[character.importance].name} | ${character.status} | ${character.lastSeen}\n`;
+    });
+    
+    const stats = getCharacterStats();
+    content += `
 📊 **统计信息**：
 - 总人数：${stats.total}人
 - 主要人物：${stats.main}人
@@ -3061,456 +2456,929 @@ class LayeredCharacterSystem {
 ⚡ **使用说明**：
 当对话中提到具体人物姓名时，系统会自动加载该人物的详细信息。
 本索引表保持轻量化，确保高效的token使用。`;
-        
-        return content;
-    }
+    
+    return content;
+}
 
-    // 获取人物统计
-    getCharacterStats() {
-        const stats = {
-            total: this.characters.size,
-            main: 0,
-            secondary: 0,
-            background: 0
-        };
-        
-        this.characters.forEach(character => {
-            stats[character.importance]++;
-        });
-        
-        return stats;
-    }
+function getCharacterStats() {
+    const stats = {
+        total: characters.size,
+        main: 0,
+        secondary: 0,
+        background: 0
+    };
+    
+    characters.forEach(character => {
+        stats[character.importance]++;
+    });
+    
+    return stats;
+}
 
-    // 按重要性获取人物数量
-    getCharacterCountByImportance(importance) {
-        let count = 0;
-        this.characters.forEach(character => {
-            if (character.importance === importance) {
-                count++;
-            }
-        });
-        return count;
-    }
+function isCharacterLimitReached() {
+    const stats = getCharacterStats();
+    return stats.total >= (context.extensionSettings[settingsKey].maxMainCharacters + 
+                          context.extensionSettings[settingsKey].maxSecondaryCharacters + 
+                          context.extensionSettings[settingsKey].maxBackgroundCharacters);
+}
 
-    // 检查人物数量限制
-    isCharacterLimitReached() {
-        const stats = this.getCharacterStats();
-        return stats.total >= (this.settings.maxMainCharacters + 
-                              this.settings.maxSecondaryCharacters + 
-                              this.settings.maxBackgroundCharacters);
-    }
+function showNotification(message, type = 'info') {
+    const notification = $(`
+        <div class="lcs-notification lcs-notification-${type}">
+            ${message}
+        </div>
+    `);
+    
+    $('body').append(notification);
+    
+    setTimeout(() => {
+        notification.fadeOut(() => notification.remove());
+    }, 3000);
+}
 
-    // 处理索引查询
-    async handleIndexQuery(message) {
-        try {
-            const indexContent = this.generateIndexContent();
-            
-            // 在AI回复中插入索引信息
-            this.insertIndexToResponse(indexContent);
-            
-            this.logEvent('index_queried', { message });
-        } catch (error) {
-            console.error('处理索引查询失败:', error);
+function shouldGenerateCharacter(message) {
+    return triggerKeywords.generate.some(keyword => 
+        message.toLowerCase().includes(keyword.toLowerCase())
+    );
+}
+
+function shouldShowIndex(message) {
+    return triggerKeywords.index.some(keyword => 
+        message.toLowerCase().includes(keyword.toLowerCase())
+    );
+}
+
+function handleCharacterGeneration(message) {
+    try {
+        // 检查人物数量限制
+        if (isCharacterLimitReached()) {
+            showNotification('已达到人物数量限制', 'warning');
+            return;
         }
-    }
-
-    // 插入索引到回复
-    insertIndexToResponse(indexContent) {
-        // 这里需要根据SillyTavern的API来实现
-        // 暂时记录到控制台
-        console.log('插入索引信息到回复:', indexContent);
-    }
-
-    // 检测和处理成长事件
-    async detectAndProcessGrowthEvents(message, context) {
-        // 分析消息是否包含成长事件
-        const growthEvents = this.extractGrowthEvents(message);
         
-        for (const event of growthEvents) {
-            // 为每个相关人物处理成长事件
-            for (const [characterId, character] of this.characters) {
-                if (this.isEventRelevantToCharacter(event, character)) {
-                    const result = await this.growthSystem.processGrowthEvent(character, event);
+        // 生成新人物
+        const character = generateCharacter(message, { message });
+        
+        if (character) {
+            // 添加到系统
+            characters.set(character.id, character);
+            updateCharacterIndex(character);
+            
+            // 显示通知
+            showNotification(`生成新人物：${character.name}`, 'success');
+            
+            // 更新UI
+            uiManager.updateStats();
+        }
+    } catch (error) {
+        console.error('人物生成失败:', error);
+        showNotification('人物生成失败', 'error');
+    }
+}
+
+function handleIndexQuery() {
+    try {
+        const indexContent = generateIndexContent();
+        
+        // 显示索引内容
+        showNotification(indexContent, 'info');
+    } catch (error) {
+        console.error('处理索引查询失败:', error);
+    }
+}
+
+function updateInteractionHistory(message) {
+    // 检查消息中提到的人物
+    characters.forEach((character, id) => {
+        if (message.includes(character.name) || 
+            message.includes(character.basicInfo.occupation)) {
+            
+            // 更新交互计数
+            character.interactionCount++;
+            character.lastUpdated = new Date().toISOString();
+            
+            // 记录交互历史
+            const history = interactionHistory.get(id) || [];
+            history.push({
+                timestamp: Date.now(),
+                message: message,
+                type: 'mentioned'
+            });
+            interactionHistory.set(id, history);
+            
+            // 检查是否需要提升重要性
+            if (context.extensionSettings[settingsKey].autoUpgrade) {
+                importanceManager.checkImportanceUpgrade(id);
+            }
+        }
+    });
+    
+    // 更新UI
+    uiManager.updateStats();
+}
+
+async function generateCharacter(message, context) {
+    console.log('开始生成人物...');
+    
+    // 1. 检测世界设定
+    const worldSetting = worldSettingDetector.detectWorldSetting(context);
+    console.log('世界设定检测结果:', worldSetting);
+    
+    // 2. 确定人物重要性
+    let score = 0;
+    if (message.includes('重要') || message.includes('关键')) score += 3;
+    if (message.includes('导师') || message.includes('首领')) score += 2;
+    if (message.includes('朋友') || message.includes('盟友')) score += 1;
+    
+    const locationKeywords = ['铁匠铺', '药店', '商会', '守卫塔'];
+    if (locationKeywords.some(keyword => message.includes(keyword))) {
+        score += 2;
+    }
+    
+    const mainCount = getCharacterCountByImportance('main');
+    const secondaryCount = getCharacterCountByImportance('secondary');
+    
+    let importance;
+    if (mainCount < context.extensionSettings[settingsKey].maxMainCharacters && score >= 3) {
+        importance = 'main';
+    } else if (secondaryCount < context.extensionSettings[settingsKey].maxSecondaryCharacters && score >= 1) {
+        importance = 'secondary';
+    } else {
+        importance = 'background';
+    }
+    
+    // 3. 生成人物ID
+    const characterId = generateCharacterId();
+    
+    // 4. 生成符合世界设定的基本信息
+    const gender = Math.random() < 0.5 ? 'male' : 'female';
+    const useSurname = Math.random() < 0.3;
+    
+    let name;
+    if (useSurname) {
+        const surname = getRandomItem(characterTemplates.names.surname);
+        const givenName = getRandomItem(characterTemplates.names[gender]);
+        name = surname + givenName;
+    } else {
+        name = getRandomItem(characterTemplates.names[gender]);
+    }
+    
+    // 根据世界设定选择职业
+    const allowedOccupations = worldSetting.details.allowedOccupations;
+    const occupationTemplates = characterTemplates.occupations[importance].filter(occ => 
+        allowedOccupations.some(allowed => occ.includes(allowed) || allowed.includes(occ))
+    );
+    
+    const occupation = occupationTemplates.length > 0 ? 
+        getRandomItem(occupationTemplates) : 
+        getRandomItem(allowedOccupations);
+    
+    // 根据世界设定选择背景
+    const allowedBackgrounds = worldSetting.details.allowedBackgrounds;
+    const backgroundTemplates = characterTemplates.backgrounds[importance].filter(bg => 
+        allowedBackgrounds.some(allowed => bg.includes(allowed) || allowed.includes(bg))
+    );
+    
+    const background = backgroundTemplates.length > 0 ? 
+        getRandomItem(backgroundTemplates) : 
+        getRandomItem(allowedBackgrounds);
+    
+    // 5. 生成详细信息
+    const detailInfo = {
+        personality: getRandomItem(characterTemplates.personalities[importance]),
+        background: background,
+        appearance: generateAppearance(importance),
+        skills: generateSkills(importance),
+        relationships: generateRelationships(importance)
+    };
+    
+    if (importance === 'main') {
+        detailInfo.story = getRandomItem(characterTemplates.backgrounds.main);
+    }
+    
+    // 6. 创建人物对象
+    const character = {
+        id: characterId,
+        name: name,
+        importance: importance,
+        basicInfo: {
+            name: name,
+            gender: gender === 'male' ? '男' : '女',
+            age: Math.floor(Math.random() * (80 - 16 + 1)) + 16,
+            occupation: occupation,
+            location: extractLocation(message) || '未知地点',
+            worldSetting: worldSetting.setting
+        },
+        detailInfo: detailInfo,
+        keys: [name, occupation],
+        worldSetting: worldSetting.setting,
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+        interactionCount: 0,
+        plotRelevance: 0,
+        playerRelationship: 0,
+        personalityValidation: null
+    };
+    
+    // 7. 应用复杂性格引擎
+    const tempCharacter = {
+        basicInfo: character.basicInfo,
+        detailInfo: character.detailInfo
+    };
+    
+    const complexPersonality = complexPersonalityEngine.generateComplexCharacter(tempCharacter);
+    character.detailInfo.complexPersonality = complexPersonality;
+    character.detailInfo.personality = complexPersonality.corePersonality;
+    character.detailInfo.personalityDescription = complexPersonalityEngine.generatePersonalityDescription(complexPersonality);
+    
+    // 8. 验证人物一致性
+    const validation = complexPersonalityEngine.validateComplexPersonalityConsistency(character);
+    character.personalityValidation = validation;
+    
+    // 9. 初始化成长数据
+    if (context.extensionSettings[settingsKey].enableGrowthSystem) {
+        character.growthData = growthSystem.initializeCharacterGrowth(character);
+    }
+    
+    console.log('人物生成完成:', character.name);
+    console.log('性格验证结果:', validation);
+    
+    return character;
+}
+
+async function generateDetailInfo(importance, basicInfo) {
+    // 1. 生成基础详细信息
+    const baseDetailInfo = {
+        personality: getRandomItem(characterTemplates.personalities[importance]),
+        background: getRandomItem(characterTemplates.backgrounds[importance]),
+        appearance: generateAppearance(importance),
+        skills: generateSkills(importance),
+        relationships: generateRelationships(importance)
+    };
+    
+    if (importance === 'main') {
+        baseDetailInfo.story = getRandomItem(characterTemplates.backgrounds.main);
+    }
+    
+    // 2. 应用复杂性格引擎
+    const tempCharacter = {
+        basicInfo: basicInfo,
+        detailInfo: baseDetailInfo
+    };
+    
+    const complexPersonality = complexPersonalityEngine.generateComplexCharacter(tempCharacter);
+    baseDetailInfo.complexPersonality = complexPersonality;
+    baseDetailInfo.personality = complexPersonality.corePersonality;
+    baseDetailInfo.personalityDescription = complexPersonalityEngine.generatePersonalityDescription(complexPersonality);
+    
+    return baseDetailInfo;
+}
+
+async function detectAndProcessGrowthEvents(message, context) {
+    if (!context.extensionSettings[settingsKey].enableGrowthSystem) return;
+    
+    // 分析消息是否包含成长事件
+    const growthEvents = extractGrowthEvents(message);
+    
+    for (const event of growthEvents) {
+        // 为每个相关人物处理成长事件
+        for (const [characterId, character] of characters) {
+            if (isEventRelevantToCharacter(event, character)) {
+                const result = await growthSystem.processGrowthEvent(character, event);
+                
+                if (result.growthOccurred) {
+                    // 处理成长结果
+                    await handleCharacterGrowth(character, result);
                     
-                    if (result.growthOccurred) {
-                        // 处理成长结果
-                        await this.handleCharacterGrowth(character, result);
-                        
-                        // 显示成长通知
-                        this.showGrowthNotification(character, result);
-                    }
+                    // 显示成长通知
+                    showGrowthNotification(character, result);
                 }
             }
         }
     }
+}
 
-    // 提取成长事件
-    extractGrowthEvents(message) {
-        const events = [];
-        
-        // 成功事件
-        if (message.includes('成功') || message.includes('完成') || message.includes('达成')) {
-            events.push({
-                type: 'success',
-                description: message,
-                intensity: this.extractEventIntensity(message)
-            });
-        }
-        
-        // 失败事件
-        if (message.includes('失败') || message.includes('挫折') || message.includes('错误')) {
-            events.push({
-                type: 'failure',
-                description: message,
-                intensity: this.extractEventIntensity(message)
-            });
-        }
-        
-        // 关系事件
-        if (message.includes('朋友') || message.includes('恋人') || message.includes('信任')) {
-            events.push({
-                type: 'relationship',
-                description: message,
-                intensity: this.extractEventIntensity(message)
-            });
-        }
-        
-        // 挑战事件
-        if (message.includes('挑战') || message.includes('困难') || message.includes('克服')) {
-            events.push({
-                type: 'challenge',
-                description: message,
-                intensity: this.extractEventIntensity(message)
-            });
-        }
-        
-        // 学习事件
-        if (message.includes('学习') || message.includes('掌握') || message.includes('理解')) {
-            events.push({
-                type: 'learning',
-                description: message,
-                intensity: this.extractEventIntensity(message)
-            });
-        }
-        
-        // 冲突事件
-        if (message.includes('冲突') || message.includes('争论') || message.includes('战斗')) {
-            events.push({
-                type: 'conflict',
-                description: message,
-                intensity: this.extractEventIntensity(message)
-            });
-        }
-        
-        return events;
+function extractGrowthEvents(message) {
+    const events = [];
+    
+    // 成功事件
+    if (message.includes('成功') || message.includes('完成') || message.includes('达成')) {
+        events.push({
+            type: 'success',
+            description: message,
+            intensity: extractEventIntensity(message)
+        });
     }
+    
+    // 失败事件
+    if (message.includes('失败') || message.includes('挫折') || message.includes('错误')) {
+        events.push({
+            type: 'failure',
+            description: message,
+            intensity: extractEventIntensity(message)
+        });
+    }
+    
+    // 关系事件
+    if (message.includes('朋友') || message.includes('恋人') || message.includes('信任')) {
+        events.push({
+            type: 'relationship',
+            description: message,
+            intensity: extractEventIntensity(message)
+        });
+    }
+    
+    // 挑战事件
+    if (message.includes('挑战') || message.includes('困难') || message.includes('克服')) {
+        events.push({
+            type: 'challenge',
+            description: message,
+            intensity: extractEventIntensity(message)
+        });
+    }
+    
+    // 学习事件
+    if (message.includes('学习') || message.includes('掌握') || message.includes('理解')) {
+        events.push({
+            type: 'learning',
+            description: message,
+            intensity: extractEventIntensity(message)
+        });
+    }
+    
+    // 冲突事件
+    if (message.includes('冲突') || message.includes('争论') || message.includes('战斗')) {
+        events.push({
+            type: 'conflict',
+            description: message,
+            intensity: extractEventIntensity(message)
+        });
+    }
+    
+    return events;
+}
 
-    // 提取事件强度
-    extractEventIntensity(message) {
-        const intensityKeywords = {
-            high: ['非常', '极其', '巨大', '重大', '深刻', '彻底'],
-            medium: ['很', '挺', '相当', '比较', '较为'],
-            low: ['有点', '稍微', '略微', '一些']
+function extractEventIntensity(message) {
+    const intensityKeywords = {
+        high: ['非常', '极其', '巨大', '重大', '深刻', '彻底'],
+        medium: ['很', '挺', '相当', '比较', '较为'],
+        low: ['有点', '稍微', '略微', '一些']
+    };
+    
+    let intensity = 0.5; // 默认中等强度
+    
+    Object.keys(intensityKeywords).forEach(level => {
+        const keywords = intensityKeywords[level];
+        if (keywords.some(keyword => message.includes(keyword))) {
+            switch(level) {
+                case 'high': intensity = 1.0; break;
+                case 'medium': intensity = 0.5; break;
+                case 'low': intensity = 0.2; break;
+            }
+        }
+    });
+    
+    return intensity;
+}
+
+function isEventRelevantToCharacter(event, character) {
+    // 检查事件是否提及人物姓名
+    if (event.description.includes(character.name)) {
+        return true;
+    }
+    
+    // 检查事件是否提及人物职业
+    if (event.description.includes(character.basicInfo.occupation)) {
+        return true;
+    }
+    
+    // 检查事件是否提及人物位置
+    if (event.description.includes(character.basicInfo.location)) {
+        return true;
+    }
+    
+    // 检查是否是当前活跃的人物
+    if (activeEntries.has(character.id)) {
+        return true;
+    }
+    
+    return false;
+}
+
+async function handleCharacterGrowth(character, growthResult) {
+    // 更新人物数据
+    character.lastUpdated = new Date().toISOString();
+    
+    // 更新世界书条目
+    await worldBookManager.createCharacterEntry(character);
+    
+    // 更新索引
+    updateCharacterIndex(character);
+    
+    // 记录成长事件
+    console.log('人物成长事件:', {
+        characterId: character.id,
+        name: character.name,
+        changes: growthResult.changes,
+        growthType: growthResult.changes[0]?.growthType
+    });
+}
+
+function showGrowthNotification(character, growthResult) {
+    const changes = growthResult.changes;
+    let message = `${character.name} 有了成长！\n`;
+    
+    changes.forEach(change => {
+        const areaName = growthSystem.growthTypes[change.area];
+        message += `${areaName}：${change.oldLevel.toFixed(1)} → ${change.newLevel.toFixed(1)}\n`;
+    });
+    
+    if (changes.length > 0) {
+        const growthType = changes[0].growthType;
+        const typeNames = {
+            breakthrough: '突破式成长',
+            gradual: '渐进式成长',
+            temporary_setback: '暂时倒退',
+            stable: '稳定期'
         };
         
-        let intensity = 0.5; // 默认中等强度
-        
-        Object.keys(intensityKeywords).forEach(level => {
-            const keywords = intensityKeywords[level];
-            if (keywords.some(keyword => message.includes(keyword))) {
-                switch(level) {
-                    case 'high': intensity = 1.0; break;
-                    case 'medium': intensity = 0.5; break;
-                    case 'low': intensity = 0.2; break;
-                }
-            }
-        });
-        
-        return intensity;
+        message += `成长类型：${typeNames[growthType]}`;
     }
+    
+    showNotification(message, 'growth');
+}
 
-    // 判断事件是否与人物相关
-    isEventRelevantToCharacter(event, character) {
-        // 检查事件是否提及人物姓名
-        if (event.description.includes(character.name)) {
-            return true;
-        }
-        
-        // 检查事件是否提及人物职业
-        if (event.description.includes(character.basicInfo.occupation)) {
-            return true;
-        }
-        
-        // 检查事件是否提及人物位置
-        if (event.description.includes(character.basicInfo.location)) {
-            return true;
-        }
-        
-        // 检查是否是当前活跃的人物
-        if (this.activeEntries.has(character.id)) {
-            return true;
-        }
-        
-        return false;
-    }
+function cleanupExpiredData() {
+    const now = Date.now();
+    const expireTime = 24 * 60 * 60 * 1000; // 24小时过期
+    
+    // 清理交互历史
+    interactionHistory.forEach((history, characterId) => {
+        const recentHistory = history.filter(item => 
+            now - item.timestamp < expireTime
+        );
+        interactionHistory.set(characterId, recentHistory);
+    });
+    
+    console.log('清理过期数据完成');
+}
 
-    // 处理人物成长
-    async handleCharacterGrowth(character, growthResult) {
-        // 更新人物数据
-        character.lastUpdated = new Date().toISOString();
-        
-        // 更新世界书条目
-        await this.worldBookManager.createCharacterEntry(character);
-        
-        // 更新索引
-        this.updateCharacterIndex(character);
-        await this.updateIndexEntry();
-        
-        // 记录成长事件
-        this.logEvent('character_growth', {
-            characterId: character.id,
-            name: character.name,
-            changes: growthResult.changes,
-            growthType: growthResult.changes[0]?.growthType
-        });
-    }
-
-    // 显示成长通知
-    showGrowthNotification(character, growthResult) {
-        const changes = growthResult.changes;
-        let message = `${character.name} 有了成长！\n`;
-        
-        changes.forEach(change => {
-            const areaName = this.growthSystem.growthTypes[change.area];
-            message += `${areaName}：${change.oldLevel.toFixed(1)} → ${change.newLevel.toFixed(1)}\n`;
-        });
-        
-        if (changes.length > 0) {
-            const growthType = changes[0].growthType;
-            const typeNames = {
-                breakthrough: '突破式成长',
-                gradual: '渐进式成长',
-                temporary_setback: '暂时倒退',
-                stable: '稳定期'
-            };
-            
-            message += `成长类型：${typeNames[growthType]}`;
-        }
-        
-        this.showNotification(message, 'growth');
-    }
-
-    // 更新交互历史
-    updateInteractionHistory(message) {
-        // 检查消息中提到的人物
-        this.characters.forEach((character, id) => {
-            if (message.includes(character.name) || 
-                message.includes(character.basicInfo.occupation)) {
-                
-                // 更新交互计数
-                character.interactionCount++;
-                character.lastUpdated = new Date().toISOString();
-                
-                // 记录交互历史
-                const history = this.interactionHistory.get(id) || [];
-                history.push({
-                    timestamp: Date.now(),
-                    message: message,
-                    type: 'mentioned'
-                });
-                this.interactionHistory.set(id, history);
-                
-                // 检查是否需要提升重要性
-                if (this.settings.autoUpgrade) {
-                    this.importanceManager.checkImportanceUpgrade(id);
-                }
-            }
-        });
-    }
-
-    // 处理AI消息
-    processAIMessage(message) {
-        // 处理AI回复中的人物信息
-        // 可以在这里提取新的人物信息或更新现有人物信息
-    }
-
-    // 启动定时任务
-    startPeriodicTasks() {
-        // 定期清理过期数据
-        setInterval(() => {
-            this.cleanupExpiredData();
-        }, this.settings.cleanupInterval);
-        
-        // 定期保存数据
-        setInterval(() => {
-            this.saveData();
-        }, 5 * 60 * 1000); // 5分钟保存一次
-    }
-
-    // 清理过期数据
-    cleanupExpiredData() {
-        const now = Date.now();
-        const expireTime = 24 * 60 * 60 * 1000; // 24小时过期
-        
-        // 清理交互历史
-        this.interactionHistory.forEach((history, characterId) => {
-            const recentHistory = history.filter(item => 
-                now - item.timestamp < expireTime
-            );
-            this.interactionHistory.set(characterId, recentHistory);
-        });
-        
-        console.log('清理过期数据完成');
-    }
-
-    // 保存数据
-    saveData() {
-        try {
-            const data = {
-                characters: Array.from(this.characters.entries()),
-                characterIndex: this.characterIndex,
-                settings: this.settings,
-                timestamp: new Date().toISOString()
-            };
-            
-            localStorage.setItem('layeredCharacterSystemData', JSON.stringify(data));
-            console.log('数据保存完成');
-        } catch (error) {
-            console.error('保存数据失败:', error);
-        }
-    }
-
-    // 加载数据
-    loadData() {
-        try {
-            const saved = localStorage.getItem('layeredCharacterSystemData');
-            if (saved) {
-                const data = JSON.parse(saved);
-                this.characters = new Map(data.characters);
-                this.characterIndex = data.characterIndex;
-                console.log('数据加载完成');
-            }
-        } catch (error) {
-            console.error('加载数据失败:', error);
-        }
-    }
-
-    // 记录事件
-    logEvent(eventType, data) {
-        const event = {
-            type: eventType,
-            data: data,
+function saveData() {
+    try {
+        const data = {
+            characters: Array.from(characters.entries()),
+            characterIndex: characterIndex,
             timestamp: new Date().toISOString()
         };
         
-        console.log('事件记录:', event);
-        
-        // 可以在这里添加事件分析或上报逻辑
+        localStorage.setItem('layeredCharacterSystemData', JSON.stringify(data));
+        console.log('数据保存完成');
+    } catch (error) {
+        console.error('保存数据失败:', error);
     }
+}
 
-    // 显示通知
-    showNotification(message, type = 'info') {
-        const notification = $(`
-            <div class="lcs-notification lcs-notification-${type}">
-                ${message}
-            </div>
-        `);
-        
-        $('body').append(notification);
-        
-        setTimeout(() => {
-            notification.fadeOut(() => notification.remove());
-        }, 3000);
-    }
-
-    // 获取系统状态
-    getSystemStatus() {
-        return {
-            characters: this.getCharacterStats(),
-            activeEntries: Array.from(this.activeEntries),
-            settings: this.settings,
-            uptime: Date.now() - (this.startTime || Date.now())
-        };
-    }
-
-    // 获取人物成长报告
-    getCharacterGrowthReport(characterId) {
-        const character = this.characters.get(characterId);
-        if (!character) {
-            return { error: '人物不存在' };
+function loadData() {
+    try {
+        const saved = localStorage.getItem('layeredCharacterSystemData');
+        if (saved) {
+            const data = JSON.parse(saved);
+            characters.clear();
+            data.characters.forEach(([id, character]) => {
+                characters.set(id, character);
+            });
+            characterIndex.length = 0;
+            characterIndex.push(...data.characterIndex);
+            console.log('数据加载完成');
         }
-        
-        return this.growthSystem.getGrowthReport(character);
-    }
-
-    // 工具方法：获取随机项
-    getRandomItem(array) {
-        return array[Math.floor(Math.random() * array.length)];
-    }
-
-    // 工具方法：获取多个随机项
-    getRandomItems(array, min, max) {
-        const count = Math.floor(Math.random() * (max - min + 1)) + min;
-        const shuffled = [...array].sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, count);
-    }
-
-    // 工具方法：提取位置
-    extractLocation(message) {
-        const locations = ['酒馆', '市场', '铁匠铺', '药店', '城门', '旅店', '商店', '街道'];
-        return locations.find(location => message.includes(location));
+    } catch (error) {
+        console.error('加载数据失败:', error);
     }
 }
 
-// 插件初始化
-let plugin;
-
-// 当SillyTavern加载时初始化插件
-$(document).ready(() => {
-    plugin = new LayeredCharacterSystem();
-    plugin.init().catch(error => {
-        console.error('插件初始化失败:', error);
-    });
-});
-// 在index.js文件的最后添加以下代码
-
-// 导出插件对象
-const pluginInstance = new LayeredCharacterSystem();
-
-// SillyTavern插件规范
-if (typeof window !== 'undefined') {
-    // 方法1：直接导出插件对象
-    window.layeredCharacterWorldbookSystem = pluginInstance;
+function addSettings() {
+    /** @type {LayeredCharacterWorldbookSystemSettings} */
+    const settings = context.extensionSettings[settingsKey];
+    const settingsContainer = document.getElementById('layered_character_worldbook_system_container') ?? document.getElementById('extensions_settings');
+    if (!settingsContainer) {
+        return;
+    }
     
-    // 方法2：如果SillyTavern使用特定的插件注册系统
-    if (window.SillyTavern && window.SillyTavern.registerPlugin) {
-        window.SillyTavern.registerPlugin({
-            name: "Layered Character Worldbook System",
-            instance: pluginInstance,
-            init: async () => {
-                await pluginInstance.init();
+    const inlineDrawer = document.createElement('div');
+    inlineDrawer.classList.add('inline-drawer');
+    settingsContainer.append(inlineDrawer);
+    
+    const inlineDrawerToggle = document.createElement('div');
+    inlineDrawerToggle.classList.add('inline-drawer-toggle', 'inline-drawer-header');
+    const extensionName = document.createElement('b');
+    extensionName.textContent = context.t`Layered Character Worldbook System`;
+    const inlineDrawerIcon = document.createElement('div');
+    inlineDrawerIcon.classList.add('inline-drawer-icon', 'fa-solid', 'fa-circle-chevron-down', 'down');
+    inlineDrawerToggle.append(extensionName, inlineDrawerIcon);
+    
+    const inlineDrawerContent = document.createElement('div');
+    inlineDrawerContent.classList.add('inline-drawer-content');
+    inlineDrawer.append(inlineDrawerToggle, inlineDrawerContent);
+    
+    // Enabled
+    const enabledCheckboxLabel = document.createElement('label');
+    enabledCheckboxLabel.classList.add('checkbox_label', 'marginBot5');
+    enabledCheckboxLabel.htmlFor = 'layeredCharacterWorldbookSystemEnabled';
+    const enabledCheckbox = document.createElement('input');
+    enabledCheckbox.id = 'layeredCharacterWorldbookSystemEnabled';
+    enabledCheckbox.type = 'checkbox';
+    enabledCheckbox.checked = settings.enabled;
+    enabledCheckbox.addEventListener('change', () => {
+        settings.enabled = enabledCheckbox.checked;
+        context.saveSettingsDebounced();
+    });
+    const enabledCheckboxText = document.createElement('span');
+    enabledCheckboxText.textContent = context.t`Enabled`;
+    enabledCheckboxLabel.append(enabledCheckbox, enabledCheckboxText);
+    inlineDrawerContent.append(enabledCheckboxLabel);
+    
+    // Auto Generate
+    const autoGenerateCheckboxLabel = document.createElement('label');
+    autoGenerateCheckboxLabel.classList.add('checkbox_label', 'marginBot5');
+    autoGenerateCheckboxLabel.htmlFor = 'layeredCharacterWorldbookSystemAutoGenerate';
+    const autoGenerateCheckbox = document.createElement('input');
+    autoGenerateCheckbox.id = 'layeredCharacterWorldbookSystemAutoGenerate';
+    autoGenerateCheckbox.type = 'checkbox';
+    autoGenerateCheckbox.checked = settings.autoGenerate;
+    autoGenerateCheckbox.addEventListener('change', () => {
+        settings.autoGenerate = autoGenerateCheckbox.checked;
+        context.saveSettingsDebounced();
+    });
+    const autoGenerateCheckboxText = document.createElement('span');
+    autoGenerateCheckboxText.textContent = context.t`Auto Generate Characters`;
+    autoGenerateCheckboxLabel.append(autoGenerateCheckbox, autoGenerateCheckboxText);
+    inlineDrawerContent.append(autoGenerateCheckboxLabel);
+    
+    // Max Main Characters
+    const maxMainCharactersLabel = document.createElement('label');
+    maxMainCharactersLabel.htmlFor = 'layeredCharacterWorldbookSystemMaxMainCharacters';
+    maxMainCharactersLabel.textContent = context.t`Max Main Characters`;
+    const maxMainCharactersInput = document.createElement('input');
+    maxMainCharactersInput.id = 'layeredCharacterWorldbookSystemMaxMainCharacters';
+    maxMainCharactersInput.type = 'number';
+    maxMainCharactersInput.min = String(0);
+    maxMainCharactersInput.max = String(20);
+    maxMainCharactersInput.step = String(1);
+    maxMainCharactersInput.value = String(settings.maxMainCharacters);
+    maxMainCharactersInput.classList.add('text_pole');
+    maxMainCharactersInput.addEventListener('input', () => {
+        settings.maxMainCharacters = Math.max(0, Math.round(Number(maxMainCharactersInput.value)));
+        context.saveSettingsDebounced();
+    });
+    inlineDrawerContent.append(maxMainCharactersLabel, maxMainCharactersInput);
+    
+    // Max Secondary Characters
+    const maxSecondaryCharactersLabel = document.createElement('label');
+    maxSecondaryCharactersLabel.htmlFor = 'layeredCharacterWorldbookSystemMaxSecondaryCharacters';
+    maxSecondaryCharactersLabel.textContent = context.t`Max Secondary Characters`;
+    const maxSecondaryCharactersInput = document.createElement('input');
+    maxSecondaryCharactersInput.id = 'layeredCharacterWorldbookSystemMaxSecondaryCharacters';
+    maxSecondaryCharactersInput.type = 'number';
+    maxSecondaryCharactersInput.min = String(0);
+    maxSecondaryCharactersInput.max = String(50);
+    maxSecondaryCharactersInput.step = String(1);
+    maxSecondaryCharactersInput.value = String(settings.maxSecondaryCharacters);
+    maxSecondaryCharactersInput.classList.add('text_pole');
+    maxSecondaryCharactersInput.addEventListener('input', () => {
+        settings.maxSecondaryCharacters = Math.max(0, Math.round(Number(maxSecondaryCharactersInput.value)));
+        context.saveSettingsDebounced();
+    });
+    inlineDrawerContent.append(maxSecondaryCharactersLabel, maxSecondaryCharactersInput);
+    
+    // Max Background Characters
+    const maxBackgroundCharactersLabel = document.createElement('label');
+    maxBackgroundCharactersLabel.htmlFor = 'layeredCharacterWorldbookSystemMaxBackgroundCharacters';
+    maxBackgroundCharactersLabel.textContent = context.t`Max Background Characters`;
+    const maxBackgroundCharactersInput = document.createElement('input');
+    maxBackgroundCharactersInput.id = 'layeredCharacterWorldbookSystemMaxBackgroundCharacters';
+    maxBackgroundCharactersInput.type = 'number';
+    maxBackgroundCharactersInput.min = String(0);
+    maxBackgroundCharactersInput.max = String(100);
+    maxBackgroundCharactersInput.step = String(1);
+    maxBackgroundCharactersInput.value = String(settings.maxBackgroundCharacters);
+    maxBackgroundCharactersInput.classList.add('text_pole');
+    maxBackgroundCharactersInput.addEventListener('input', () => {
+        settings.maxBackgroundCharacters = Math.max(0, Math.round(Number(maxBackgroundCharactersInput.value)));
+        context.saveSettingsDebounced();
+    });
+    inlineDrawerContent.append(maxBackgroundCharactersLabel, maxBackgroundCharactersInput);
+    
+    // Token Budget
+    const tokenBudgetLabel = document.createElement('label');
+    tokenBudgetLabel.htmlFor = 'layeredCharacterWorldbookSystemTokenBudget';
+    tokenBudgetLabel.textContent = context.t`Token Budget`;
+    const tokenBudgetInput = document.createElement('input');
+    tokenBudgetInput.id = 'layeredCharacterWorldbookSystemTokenBudget';
+    tokenBudgetInput.type = 'number';
+    tokenBudgetInput.min = String(500);
+    tokenBudgetInput.max = String(10000);
+    tokenBudgetInput.step = String(100);
+    tokenBudgetInput.value = String(settings.tokenBudget);
+    tokenBudgetInput.classList.add('text_pole');
+    tokenBudgetInput.addEventListener('input', () => {
+        settings.tokenBudget = Math.max(500, Math.round(Number(tokenBudgetInput.value)));
+        context.saveSettingsDebounced();
+    });
+    inlineDrawerContent.append(tokenBudgetLabel, tokenBudgetInput);
+    
+    // Auto Upgrade
+    const autoUpgradeCheckboxLabel = document.createElement('label');
+    autoUpgradeCheckboxLabel.classList.add('checkbox_label', 'marginBot5');
+    autoUpgradeCheckboxLabel.htmlFor = 'layeredCharacterWorldbookSystemAutoUpgrade';
+    const autoUpgradeCheckbox = document.createElement('input');
+    autoUpgradeCheckbox.id = 'layeredCharacterWorldbookSystemAutoUpgrade';
+    autoUpgradeCheckbox.type = 'checkbox';
+    autoUpgradeCheckbox.checked = settings.autoUpgrade;
+    autoUpgradeCheckbox.addEventListener('change', () => {
+        settings.autoUpgrade = autoUpgradeCheckbox.checked;
+        context.saveSettingsDebounced();
+    });
+    const autoUpgradeCheckboxText = document.createElement('span');
+    autoUpgradeCheckboxText.textContent = context.t`Auto Upgrade Importance`;
+    autoUpgradeCheckboxLabel.append(autoUpgradeCheckbox, autoUpgradeCheckboxText);
+    inlineDrawerContent.append(autoUpgradeCheckboxLabel);
+    
+    // Enable Growth System
+    const enableGrowthSystemCheckboxLabel = document.createElement('label');
+    enableGrowthSystemCheckboxLabel.classList.add('checkbox_label', 'marginBot5');
+    enableGrowthSystemCheckboxLabel.htmlFor = 'layeredCharacterWorldbookSystemEnableGrowthSystem';
+    const enableGrowthSystemCheckbox = document.createElement('input');
+    enableGrowthSystemCheckbox.id = 'layeredCharacterWorldbookSystemEnableGrowthSystem';
+    enableGrowthSystemCheckbox.type = 'checkbox';
+    enableGrowthSystemCheckbox.checked = settings.enableGrowthSystem;
+    enableGrowthSystemCheckbox.addEventListener('change', () => {
+        settings.enableGrowthSystem = enableGrowthSystemCheckbox.checked;
+        context.saveSettingsDebounced();
+    });
+    const enableGrowthSystemCheckboxText = document.createElement('span');
+    enableGrowthSystemCheckboxText.textContent = context.t`Enable Growth System`;
+    enableGrowthSystemCheckboxLabel.append(enableGrowthSystemCheckbox, enableGrowthSystemCheckboxText);
+    inlineDrawerContent.append(enableGrowthSystemCheckboxLabel);
+}
+
+function addCommands() {
+    // 启用/禁用系统
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'lcws-state',
+        helpString: 'Change the state of the Layered Character Worldbook System. If no argument is provided, return the current state.',
+        returns: 'boolean',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Desired state of the system.',
+                typeList: ARGUMENT_TYPE.STRING,
+                isRequired: true,
+                acceptsMultiple: false,
+                enumProvider: commonEnumProviders.boolean('onOffToggle'),
+            }),
+        ],
+        callback: (_, state) => {
+            if (state && typeof state === 'string') {
+                switch (String(state).trim().toLowerCase()) {
+                    case 'toggle':
+                    case 't':
+                        context.extensionSettings[settingsKey].enabled = !context.extensionSettings[settingsKey].enabled;
+                        break;
+                    default:
+                        context.extensionSettings[settingsKey].enabled = isTrueBoolean(String(state));
+                }
+                const checkbox = document.getElementById('layeredCharacterWorldbookSystemEnabled');
+                if (checkbox instanceof HTMLInputElement) {
+                    checkbox.checked = context.extensionSettings[settingsKey].enabled;
+                    checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                context.saveSettingsDebounced();
             }
-        });
+            return String(context.extensionSettings[settingsKey].enabled);
+        },
+    }));
+    
+    // 生成人物
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'lcws-generate',
+        helpString: 'Generate a new character.',
+        callback: () => {
+            if (!context.extensionSettings[settingsKey].enabled) {
+                return 'System is disabled';
+            }
+            
+            if (isCharacterLimitReached()) {
+                return 'Character limit reached';
+            }
+            
+            const character = generateCharacter('手动生成', { message: '手动生成' });
+            if (character) {
+                characters.set(character.id, character);
+                updateCharacterIndex(character);
+                uiManager.updateStats();
+                return `Generated character: ${character.name}`;
+            }
+            
+            return 'Failed to generate character';
+        },
+    }));
+    
+    // 显示人物索引
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'lcws-index',
+        helpString: 'Show character index.',
+        callback: () => {
+            if (!context.extensionSettings[settingsKey].enabled) {
+                return 'System is disabled';
+            }
+            
+            return generateIndexContent();
+        },
+    }));
+    
+    // 清空所有人物
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'lcws-clear',
+        helpString: 'Clear all characters.',
+        callback: () => {
+            if (!context.extensionSettings[settingsKey].enabled) {
+                return 'System is disabled';
+            }
+            
+            characters.clear();
+            characterIndex.length = 0;
+            uiManager.updateStats();
+            return 'All characters cleared';
+        },
+    }));
+    
+    // 获取人物成长报告
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'lcws-growth',
+        helpString: 'Get character growth report. Usage: /lcws-growth [character_name]',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Character name',
+                typeList: ARGUMENT_TYPE.STRING,
+                isRequired: false,
+                acceptsMultiple: false,
+            }),
+        ],
+        callback: (_, characterName) => {
+            if (!context.extensionSettings[settingsKey].enabled) {
+                return 'System is disabled';
+            }
+            
+            if (!context.extensionSettings[settingsKey].enableGrowthSystem) {
+                return 'Growth system is disabled';
+            }
+            
+            if (!characterName) {
+                // 返回所有人物的成长概览
+                let report = '=== 人物成长报告 ===\n\n';
+                characters.forEach((character, id) => {
+                    if (character.growthData) {
+                        const growthReport = growthSystem.getGrowthReport(character);
+                        report += `${character.name}: ${growthReport.summary}\n`;
+                    }
+                });
+                return report || 'No growth data available';
+            }
+            
+            // 查找特定人物
+            let foundCharacter = null;
+            characters.forEach((character) => {
+                if (character.name === characterName) {
+                    foundCharacter = character;
+                }
+            });
+            
+            if (!foundCharacter) {
+                return `Character "${characterName}" not found`;
+            }
+            
+            if (!foundCharacter.growthData) {
+                return `Character "${characterName}" has no growth data`;
+            }
+            
+            const growthReport = growthSystem.getGrowthReport(foundCharacter);
+            let report = `=== ${foundCharacter.name} 成长报告 ===\n\n`;
+            report += `${growthReport.summary}\n\n`;
+            
+            report += '各领域详情:\n';
+            Object.keys(growthReport.areas).forEach(area => {
+                const areaData = growthReport.areas[area];
+                report += `- ${areaData.name}: ${areaData.level}级 (${areaData.experience}经验)\n`;
+            });
+            
+            if (growthReport.milestones.length > 0) {
+                report += '\n里程碑:\n';
+                growthReport.milestones.forEach(milestone => {
+                    report += `- ${milestone.description}\n`;
+                });
+            }
+            
+            return report;
+        },
+    }));
+}
+
+// 监听消息发送
+globalThis.LayeredCharacterWorldbookSystem_interceptMessageSend = function (message) {
+    /** @type {LayeredCharacterWorldbookSystemSettings} */
+    const settings = context.extensionSettings[settingsKey];
+    if (!settings.enabled || !settings.autoGenerate) {
+        return;
     }
     
-    // 方法3：备用方案
-    if (!window.plugins) {
-        window.plugins = [];
+    // 检查是否需要生成新人物
+    if (smartTriggerSystem.checkTrigger({ message })) {
+        handleCharacterGeneration(message);
     }
-    window.plugins.push({
-        name: "Layered Character Worldbook System",
-        instance: pluginInstance
+    
+    // 检查是否需要查询人物索引
+    if (shouldShowIndex(message)) {
+        handleIndexQuery();
+    }
+    
+    // 检测成长事件
+    if (settings.enableGrowthSystem) {
+        detectAndProcessGrowthEvents(message, { message });
+    }
+    
+    // 更新交互历史
+    updateInteractionHistory(message);
+};
+
+// 监听消息接收
+globalThis.LayeredCharacterWorldbookSystem_interceptMessageReceived = function (message) {
+    /** @type {LayeredCharacterWorldbookSystemSettings} */
+    const settings = context.extensionSettings[settingsKey];
+    if (!settings.enabled) {
+        return;
+    }
+    
+    // 处理AI回复中的人物信息
+    // 可以在这里提取新的人物信息或更新现有人物信息
+};
+
+// 设置成长事件监听器
+function setupGrowthEventListeners() {
+    // 监听人物成长事件
+    $(document).on('character_grew', (e, characterId, growthResult) => {
+        console.log(`人物成长事件：${characterId}`, growthResult);
+        uiManager.updateCharacterGrowthUI(characterId);
     });
     
-    // 自动初始化
-    $(document).ready(() => {
-        pluginInstance.init().catch(error => {
-            console.error('插件初始化失败:', error);
-        });
+    // 监听里程碑达成事件
+    $(document).on('character_milestones_achieved', (e, characterId, milestones) => {
+        console.log(`人物里程碑达成：${characterId}`, milestones);
+        uiManager.showMilestoneNotification(characterId, milestones);
+    });
+    
+    // 监听成长数据保存事件
+    $(document).on('character_growth_saved', (e, characterId, growthData) => {
+        console.log(`成长数据已保存：${characterId}`);
     });
 }
 
-// 导出为Node.js模块（如果需要）
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = LayeredCharacterSystem;
-}
+// 初始化扩展
+(function initExtension() {
+    if (!context.extensionSettings[settingsKey]) {
+        context.extensionSettings[settingsKey] = structuredClone(defaultSettings);
+    }
+    
+    for (const key of Object.keys(defaultSettings)) {
+        if (context.extensionSettings[settingsKey][key] === undefined) {
+            context.extensionSettings[settingsKey][key] = defaultSettings[key];
+        }
+    }
+    
+    addSettings();
+    addCommands();
+    
+    // 创建UI
+    if (context.extensionSettings[settingsKey].enabled) {
+        $(document).ready(() => {
+            uiManager.createUI();
+            
+            // 设置成长事件监听器
+            if (context.extensionSettings[settingsKey].enableGrowthSystem) {
+                setupGrowthEventListeners();
+            }
+            
+            // 启动定时任务
+            setInterval(() => {
+                cleanupExpiredData();
+            }, context.extensionSettings[settingsKey].cleanupInterval);
+            
+            setInterval(() => {
+                saveData();
+            }, 5 * 60 * 1000); // 5分钟保存一次
+            
+            // 加载数据
+            loadData();
+        });
+    }
+    
+    console.log('✅ 分层人物世界书系统插件初始化完成');
+})();
