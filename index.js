@@ -1,3 +1,4 @@
+console.log('🔌 分层人物世界书系统插件文件已加载');
 // 世界书管理器
 class WorldBookManager {
     constructor(plugin) {
