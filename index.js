@@ -3471,3 +3471,45 @@ $(document).ready(() => {
         console.error('插件初始化失败:', error);
     });
 });
+// 在index.js文件的最后添加以下代码
+
+// 导出插件对象
+const pluginInstance = new LayeredCharacterSystem();
+
+// SillyTavern插件规范
+if (typeof window !== 'undefined') {
+    // 方法1：直接导出插件对象
+    window.layeredCharacterWorldbookSystem = pluginInstance;
+    
+    // 方法2：如果SillyTavern使用特定的插件注册系统
+    if (window.SillyTavern && window.SillyTavern.registerPlugin) {
+        window.SillyTavern.registerPlugin({
+            name: "Layered Character Worldbook System",
+            instance: pluginInstance,
+            init: async () => {
+                await pluginInstance.init();
+            }
+        });
+    }
+    
+    // 方法3：备用方案
+    if (!window.plugins) {
+        window.plugins = [];
+    }
+    window.plugins.push({
+        name: "Layered Character Worldbook System",
+        instance: pluginInstance
+    });
+    
+    // 自动初始化
+    $(document).ready(() => {
+        pluginInstance.init().catch(error => {
+            console.error('插件初始化失败:', error);
+        });
+    });
+}
+
+// 导出为Node.js模块（如果需要）
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = LayeredCharacterSystem;
+}
