@@ -1,5 +1,52 @@
 /* 分层人物世界书系统样式 */
 
+/* 悬浮球样式 */
+.lcs-floating-ball {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1001;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.lcs-floating-ball:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.lcs-ball-icon {
+    color: white;
+    font-size: 24px;
+}
+
+.lcs-ball-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff4757;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* 主面板样式 */
 .lcs-panel {
     position: fixed;
     top: 60px;
@@ -17,6 +64,11 @@
     overflow-y: auto;
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
+    display: none;
+}
+
+.lcs-panel.active {
+    display: block;
 }
 
 .lcs-panel:hover {
@@ -239,205 +291,395 @@
     box-shadow: 0 0 12px rgba(173, 216, 230, 0.3);
 }
 
-.lcs-character-details {
+/* API配置页面样式 */
+.lcs-api-config {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 600px;
-    max-width: 90vw;
-    max-height: 85vh;
-    background: linear-gradient(135deg, var(--black40a), var(--black50a));
-    border: 2px solid var(--white30a);
-    border-radius: 16px;
-    padding: 25px;
-    color: var(--White);
-    font-family: var(--mainFontFamily);
-    z-index: 2000;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-    overflow-y: auto;
-    backdrop-filter: blur(15px);
-}
-
-.lcs-character-details h3 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    color: var(--White);
-    text-align: center;
-    font-size: 24px;
-    font-weight: 600;
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-}
-
-.lcs-detail-section {
-    margin-bottom: 20px;
-    padding: 15px;
-    background: var(--black20a);
-    border-radius: 10px;
-    border: 1px solid var(--white20a);
-}
-
-.lcs-detail-section h4 {
-    margin-bottom: 12px;
-    color: var(--grey80);
-    font-size: 16px;
-    border-bottom: 1px solid var(--white20a);
-    padding-bottom: 8px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.lcs-detail-section p {
-    margin: 8px 0;
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--grey90);
-}
-
-.lcs-close-details {
-    display: block;
-    width: 100%;
-    padding: 15px;
-    margin-top: 25px;
-    background: linear-gradient(135deg, var(--black30a), var(--black40a));
-    border: 2px solid var(--white30a);
-    border-radius: 10px;
-    color: var(--White);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 16px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    position: relative;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    background: var(--black30a);
+    border: 1px solid var(--white30a);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 1002;
+    display: none;
+    flex-direction: column;
     overflow: hidden;
+    backdrop-filter: blur(10px);
 }
 
-.lcs-close-details::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
+.lcs-api-config.active {
+    display: flex;
 }
 
-.lcs-close-details:hover::before {
-    left: 100%;
-}
-
-.lcs-close-details:hover {
+.lcs-api-header {
+    padding: 15px 20px;
     background: linear-gradient(135deg, var(--black40a), var(--black50a));
-    border-color: var(--white50a);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-}
-
-.lcs-settings-dialog {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 500px;
-    max-width: 90vw;
-    background: linear-gradient(135deg, var(--black40a), var(--black50a));
-    border: 2px solid var(--white30a);
-    border-radius: 16px;
-    padding: 25px;
-    color: var(--White);
-    font-family: var(--mainFontFamily);
-    z-index: 2000;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(15px);
-}
-
-.lcs-settings-dialog h3 {
-    margin-top: 0;
-    margin-bottom: 25px;
-    color: var(--White);
-    text-align: center;
-    font-size: 22px;
-    font-weight: 600;
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-}
-
-.lcs-setting {
-    margin-bottom: 18px;
+    border-bottom: 1px solid var(--white30a);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px;
-    background: var(--black20a);
-    border-radius: 8px;
-    border: 1px solid var(--white20a);
-    transition: all 0.2s ease;
 }
 
-.lcs-setting:hover {
-    background: var(--black30a);
-    border-color: var(--white30a);
+.lcs-api-title {
+    margin: 0;
+    color: var(--White);
+    font-size: 18px;
+    font-weight: 600;
 }
 
-.lcs-setting label {
+.lcs-api-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--White);
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.lcs-api-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.lcs-api-content {
     flex: 1;
-    font-size: 14px;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.lcs-api-section {
+    margin-bottom: 25px;
+}
+
+.lcs-api-section h4 {
+    margin: 0 0 15px 0;
+    color: var(--White);
+    font-size: 16px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--white30a);
+    padding-bottom: 8px;
+}
+
+.lcs-form-group {
+    margin-bottom: 15px;
+}
+
+.lcs-form-label {
+    display: block;
+    margin-bottom: 8px;
     color: var(--grey80);
+    font-size: 14px;
     font-weight: 500;
-    cursor: pointer;
 }
 
-.lcs-setting input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    accent-color: var(--white50a);
-}
-
-.lcs-setting input[type="number"] {
-    width: 100px;
-    padding: 8px 12px;
-    background: var(--black30a);
+.lcs-form-input,
+.lcs-form-select,
+.lcs-form-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, var(--black20a), var(--black30a));
     border: 1px solid var(--white30a);
     border-radius: 6px;
     color: var(--White);
     font-size: 14px;
+    transition: all 0.3s ease;
+    font-family: var(--mainFontFamily);
+}
+
+.lcs-form-input:focus,
+.lcs-form-select:focus,
+.lcs-form-textarea:focus {
+    outline: none;
+    border-color: var(--white50a);
+    background: linear-gradient(135deg, var(--black30a), var(--black40a));
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+}
+
+.lcs-form-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.lcs-form-checkbox {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.lcs-form-checkbox input {
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+    accent-color: #667eea;
+}
+
+.lcs-form-checkbox label {
+    color: var(--grey80);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.lcs-form-range {
+    width: 100%;
+    margin: 10px 0;
+}
+
+.lcs-range-value {
+    display: inline-block;
+    margin-left: 10px;
+    color: var(--White);
     font-weight: 500;
+    min-width: 40px;
+}
+
+.lcs-api-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--white30a);
+}
+
+.lcs-api-button {
+    flex: 1;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, var(--black30a), var(--black40a));
+    border: 1px solid var(--white30a);
+    border-radius: 8px;
+    color: var(--White);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.lcs-api-button.primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-color: #667eea;
+}
+
+.lcs-api-button.primary:hover {
+    background: linear-gradient(135deg, #5a6fd8, #6a4190);
+    border-color: #5a6fd8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.lcs-api-button.secondary:hover {
+    background: linear-gradient(135deg, var(--black40a), var(--black50a));
+    border-color: var(--white50a);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.lcs-api-status {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: center;
+    display: none;
+}
+
+.lcs-api-status.success {
+    background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(46, 204, 113, 0.1));
+    border: 1px solid rgba(46, 204, 113, 0.3);
+    color: #2ecc71;
+}
+
+.lcs-api-status.error {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.2), rgba(231, 76, 60, 0.1));
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    color: #e74c3c;
+}
+
+.lcs-api-status.info {
+    background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(52, 152, 219, 0.1));
+    border: 1px solid rgba(52, 152, 219, 0.3);
+    color: #3498db;
+}
+
+.lcs-api-status.active {
+    display: block;
+}
+
+/* API测试结果样式 */
+.lcs-api-test-result {
+    margin-top: 15px;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--black20a), var(--black30a));
+    border-radius: 6px;
+    border: 1px solid var(--white20a);
+    font-size: 13px;
+    display: none;
+}
+
+.lcs-api-test-result.active {
+    display: block;
+}
+
+.lcs-test-result-header {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--White);
+}
+
+.lcs-test-result-content {
+    color: var(--grey80);
+    line-height: 1.4;
+    font-family: monospace;
+    font-size: 12px;
+    background: var(--black10a);
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    overflow-x: auto;
+}
+
+/* 关系网络样式 */
+.lcs-relationship-network {
+    margin-top: 20px;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--black20a), var(--black30a));
+    border-radius: 10px;
+    border: 1px solid var(--white20a);
+}
+
+.lcs-relationship-network h4 {
+    margin: 0 0 15px 0;
+    color: var(--White);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.lcs-relationship-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: var(--black15a);
+    border-radius: 6px;
+    border: 1px solid var(--white15a);
+    font-size: 13px;
     transition: all 0.2s ease;
 }
 
-.lcs-setting input[type="number"]:focus {
-    outline: none;
-    border-color: var(--white50a);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+.lcs-relationship-item:hover {
+    background: var(--black25a);
+    border-color: var(--white25a);
 }
 
-.lcs-dialog-buttons {
-    display: flex;
-    gap: 15px;
-    margin-top: 25px;
+.lcs-relationship-strength {
+    display: inline-block;
+    width: 60px;
+    height: 6px;
+    background: var(--black30a);
+    border-radius: 3px;
+    margin-left: 10px;
+    position: relative;
+    overflow: hidden;
 }
 
+.lcs-relationship-strength-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50, #8bc34a);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* 时间线样式 */
+.lcs-timeline {
+    margin-top: 20px;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--black20a), var(--black30a));
+    border-radius: 10px;
+    border: 1px solid var(--white20a);
+}
+
+.lcs-timeline h4 {
+    margin: 0 0 15px 0;
+    color: var(--White);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.lcs-timeline-item {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: var(--black15a);
+    border-radius: 6px;
+    border: 1px solid var(--white15a);
+    border-left: 3px solid var(--white30a);
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.lcs-timeline-item:hover {
+    background: var(--black25a);
+    border-color: var(--white25a);
+}
+
+.lcs-timeline-date {
+    font-size: 12px;
+    color: var(--grey70);
+    margin-bottom: 5px;
+}
+
+.lcs-timeline-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--White);
+}
+
+.lcs-timeline-description {
+    color: var(--grey80);
+    line-height: 1.4;
+}
+
+/* 通知样式 */
 .lcs-notification {
     position: fixed;
-    bottom: 30px;
-    right: 30px;
+    bottom: 20px;
+    right: 20px;
+    background: var(--SmartThemeBodyColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 8px;
+    padding: 15px 20px;
     max-width: 400px;
-    padding: 20px;
-    background: linear-gradient(135deg, var(--black40a), var(--black50a));
-    border: 2px solid var(--white30a);
-    border-radius: 12px;
-    color: var(--White);
-    font-family: var(--mainFontFamily);
-    z-index: 3000;
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.5);
-    font-size: 14px;
-    line-height: 1.6;
-    white-space: pre-line;
-    backdrop-filter: blur(10px);
-    animation: slideIn 0.3s ease-out;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    z-index: 10001;
+    animation: slideIn 0.3s ease;
+    color: var(--SmartThemeBodyTextColor);
+}
+
+.lcs-notification-info {
+    border-left: 4px solid #3498db;
+}
+
+.lcs-notification-success {
+    border-left: 4px solid #2ecc71;
+}
+
+.lcs-notification-warning {
+    border-left: 4px solid #f39c12;
+}
+
+.lcs-notification-error {
+    border-left: 4px solid #e74c3c;
+}
+
+.lcs-notification-growth {
+    border-left: 4px solid #9b59b6;
 }
 
 @keyframes slideIn {
@@ -451,148 +693,227 @@
     }
 }
 
-.lcs-notification-success {
-    border-color: #4caf50;
-    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
-    box-shadow: 0 15px 45px rgba(76, 175, 80, 0.4);
+/* 人物详情弹窗样式 */
+.lcs-character-detail {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    background: var(--SmartThemeBodyColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 1002;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.lcs-notification-warning {
-    border-color: #ff9800;
-    background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.1));
-    box-shadow: 0 15px 45px rgba(255, 152, 0, 0.4);
+.lcs-character-detail.active {
+    display: flex;
 }
 
-.lcs-notification-error {
-    border-color: #f44336;
-    background: linear-gradient(135deg, rgba(244, 67, 54, 0.2), rgba(244, 67, 54, 0.1));
-    box-shadow: 0 15px 45px rgba(244, 67, 54, 0.4);
+.lcs-detail-header {
+    padding: 15px 20px;
+    background: var(--SmartThemeBlurTintColor);
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.lcs-notification-growth {
-    border-color: #2196f3;
-    background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1));
-    box-shadow: 0 15px 45px rgba(33, 150, 243, 0.4);
+.lcs-detail-title {
+    margin: 0;
+    color: var(--SmartThemeBodyTextColor);
+    font-size: 18px;
+    font-weight: 600;
 }
 
-.lcs-notification-milestone {
-    border-color: #9c27b0;
-    background: linear-gradient(135deg, rgba(156, 39, 176, 0.2), rgba(156, 39, 176, 0.1));
-    box-shadow: 0 15px 45px rgba(156, 39, 176, 0.4);
+.lcs-detail-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--SmartThemeBodyTextColor);
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.lcs-detail-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.lcs-detail-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.lcs-detail-section {
+    margin-bottom: 20px;
+}
+
+.lcs-detail-section h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--SmartThemeBodyTextColor);
+    font-size: 16px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    padding-bottom: 5px;
+}
+
+.lcs-detail-info {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.lcs-detail-label {
+    font-weight: 500;
+    color: var(--SmartThemeEmColor);
+}
+
+.lcs-detail-value {
+    color: var(--SmartThemeBodyTextColor);
+}
+
+.lcs-detail-description {
+    color: var(--SmartThemeBodyTextColor);
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+/* 遮罩层样式 */
+.lcs-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+    display: none;
+}
+
+.lcs-overlay.active {
+    display: block;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
     .lcs-panel {
-        width: 280px;
-        right: 10px;
-        top: 50px;
-        padding: 15px;
+        width: 90%;
+        right: 5%;
+        left: 5%;
     }
     
-    .lcs-panel h3 {
-        font-size: 16px;
-        margin-bottom: 15px;
+    .lcs-api-config {
+        width: 95%;
     }
     
     .lcs-controls {
         flex-direction: column;
-        gap: 8px;
     }
     
-    .lcs-character-details {
-        width: 95vw;
-        padding: 20px;
+    .lcs-character-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
     }
     
-    .lcs-settings-dialog {
-        width: 95vw;
-        padding: 20px;
+    .lcs-character-detail {
+        width: 95%;
     }
     
-    .lcs-notification {
-        right: 15px;
-        bottom: 15px;
-        max-width: calc(100vw - 30px);
-        padding: 15px;
-        font-size: 13px;
-    }
-}
-
-/* 滚动条美化 */
-.lcs-character-details::-webkit-scrollbar,
-.lcs-settings-dialog::-webkit-scrollbar {
-    width: 8px;
-}
-
-.lcs-character-details::-webkit-scrollbar-track,
-.lcs-settings-dialog::-webkit-scrollbar-track {
-    background: var(--black20a);
-    border-radius: 4px;
-}
-
-.lcs-character-details::-webkit-scrollbar-thumb,
-.lcs-settings-dialog::-webkit-scrollbar-thumb {
-    background: var(--white30a);
-    border-radius: 4px;
-}
-
-.lcs-character-details::-webkit-scrollbar-thumb:hover,
-.lcs-settings-dialog::-webkit-scrollbar-thumb:hover {
-    background: var(--white50a);
-}
-
-/* 动画效果 */
-.lcs-character-item {
-    animation: fadeInUp 0.5s ease-out;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* 特殊效果 */
-.lcs-panel::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--white50a), transparent);
-    animation: shimmer 3s infinite;
-}
-
-@keyframes shimmer {
-    0% {
-        transform: translateX(-100%);
-    }
-    100% {
-        transform: translateX(100%);
+    .lcs-api-buttons {
+        flex-direction: column;
     }
 }
 
 /* 深色模式适配 */
 @media (prefers-color-scheme: dark) {
+    .lcs-floating-ball {
+        background: linear-gradient(135deg, #4a69bd 0%, #6c5ce7 100%);
+    }
+    
+    .lcs-ball-badge {
+        background: #ff3838;
+    }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+    .lcs-floating-ball {
+        border: 2px solid white;
+    }
+    
     .lcs-panel {
-        background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.9));
-        border-color: rgba(255, 255, 255, 0.2);
+        border: 2px solid var(--SmartThemeBorderColor);
     }
     
-    .lcs-character-item {
-        background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7));
-        border-color: rgba(255, 255, 255, 0.15);
+    .lcs-button {
+        border: 2px solid var(--SmartThemeBorderColor);
     }
     
-    .lcs-character-item:hover {
-        background: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.8));
-        border-color: rgba(255, 255, 255, 0.25);
+    .lcs-api-config {
+        border: 2px solid var(--SmartThemeBorderColor);
     }
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+    .lcs-floating-ball,
+    .lcs-button,
+    .lcs-character-item,
+    .lcs-relationship-item,
+    .lcs-timeline-item,
+    .lcs-api-button {
+        transition: none;
+    }
+    
+    .lcs-notification {
+        animation: none;
+    }
+    
+    .lcs-button::before {
+        transition: none;
+    }
+}
+
+/* 自定义滚动条 */
+.lcs-panel::-webkit-scrollbar,
+.lcs-character-detail::-webkit-scrollbar,
+.lcs-api-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.lcs-panel::-webkit-scrollbar-track,
+.lcs-character-detail::-webkit-scrollbar-track,
+.lcs-api-content::-webkit-scrollbar-track {
+    background: var(--SmartThemeBlurTintColor);
+    border-radius: 4px;
+}
+
+.lcs-panel::-webkit-scrollbar-thumb,
+.lcs-character-detail::-webkit-scrollbar-thumb,
+.lcs-api-content::-webkit-scrollbar-thumb {
+    background: var(--SmartThemeEmColor);
+    border-radius: 4px;
+}
+
+.lcs-panel::-webkit-scrollbar-thumb:hover,
+.lcs-character-detail::-webkit-scrollbar-thumb:hover,
+.lcs-api-content::-webkit-scrollbar-thumb:hover {
+    background: var(--SmartThemeEmColor);
 }
